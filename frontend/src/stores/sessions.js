@@ -145,6 +145,40 @@ export const useSessionStore = defineStore('sessions', {
       }
     },
 
+    async updateSession(sessionId, updateData) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.put(`/api/sessions/${sessionId}`, updateData)
+        // Update in recentSessions array
+        const index = this.recentSessions.findIndex(s => s.id === sessionId)
+        if (index !== -1) {
+          this.recentSessions[index] = response.data
+        }
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteSession(sessionId) {
+      this.loading = true
+      this.error = null
+      try {
+        await api.delete(`/api/sessions/${sessionId}`)
+        // Remove from recentSessions array
+        this.recentSessions = this.recentSessions.filter(s => s.id !== sessionId)
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
     startPolling() {
       if (this.pollInterval) return
 

@@ -52,6 +52,18 @@ class SessionReview(BaseModel):
     tag_ids: Optional[List[int]] = None
 
 
+class SessionUpdate(BaseModel):
+    """Schema for updating a session."""
+
+    project_id: Optional[int] = None
+    planned_duration: Optional[int] = None
+    actual_duration: Optional[int] = None
+    satisfaction_score: Optional[int] = None
+    tasks_done: Optional[str] = None
+    notes: Optional[str] = None
+    tag_ids: Optional[List[int]] = None
+
+
 class AddNoteRequest(BaseModel):
     """Schema for adding a note."""
 
@@ -273,5 +285,47 @@ async def toggle_notifications(session_id: int, service: SessionService = Depend
     """
     try:
         return service.toggle_notifications(session_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.put("/{session_id}", response_model=SessionResponse)
+async def update_session(
+    session_id: int,
+    data: SessionUpdate,
+    service: SessionService = Depends(get_service)
+):
+    """Update a session.
+
+    Args:
+        session_id: ID of session to update
+        data: Update data
+        service: Session service instance
+
+    Returns:
+        Updated session
+
+    Raises:
+        HTTPException: If session not found
+    """
+    try:
+        return service.update_session(session_id, data.model_dump(exclude_unset=True))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/{session_id}", status_code=204)
+async def delete_session(session_id: int, service: SessionService = Depends(get_service)):
+    """Delete a session.
+
+    Args:
+        session_id: ID of session to delete
+        service: Session service instance
+
+    Raises:
+        HTTPException: If session not found
+    """
+    try:
+        service.delete_session(session_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

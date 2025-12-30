@@ -210,3 +210,51 @@ class SessionService:
         self.db.commit()
         self.db.refresh(session)
         return session
+
+    def update_session(self, session_id: int, update_data: dict) -> Session:
+        """Update a session.
+
+        Args:
+            session_id: ID of session to update
+            update_data: Dictionary with update data
+
+        Returns:
+            Updated session
+
+        Raises:
+            ValueError: If session not found
+        """
+        session = self.get_by_id(session_id)
+        if not session:
+            raise ValueError("Session not found")
+
+        # Handle tags separately
+        tag_ids = update_data.pop("tag_ids", None)
+        if tag_ids is not None:
+            tags = self.db.query(Tag).filter(Tag.id.in_(tag_ids)).all()
+            session.tags = tags
+
+        # Update other fields
+        for key, value in update_data.items():
+            if hasattr(session, key) and value is not None:
+                setattr(session, key, value)
+
+        self.db.commit()
+        self.db.refresh(session)
+        return session
+
+    def delete_session(self, session_id: int) -> None:
+        """Delete a session.
+
+        Args:
+            session_id: ID of session to delete
+
+        Raises:
+            ValueError: If session not found
+        """
+        session = self.get_by_id(session_id)
+        if not session:
+            raise ValueError("Session not found")
+
+        self.db.delete(session)
+        self.db.commit()

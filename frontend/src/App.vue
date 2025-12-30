@@ -6,7 +6,7 @@
         <div class="flex justify-between h-16">
           <div class="flex space-x-8">
             <RouterLink to="/" class="inline-flex items-center px-1 pt-1 text-gray-900 font-medium hover:text-blue-600">
-              Home
+              Dashboard
             </RouterLink>
             <RouterLink to="/projects" class="inline-flex items-center px-1 pt-1 text-gray-700 hover:text-blue-600">
               Projects
@@ -19,6 +19,9 @@
             </RouterLink>
             <RouterLink to="/sessions" class="inline-flex items-center px-1 pt-1 text-gray-700 hover:text-blue-600">
               Sessions
+            </RouterLink>
+            <RouterLink to="/statistics" class="inline-flex items-center px-1 pt-1 text-gray-700 hover:text-blue-600">
+              Statistics
             </RouterLink>
           </div>
         </div>

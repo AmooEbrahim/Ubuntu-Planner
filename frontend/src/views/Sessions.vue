@@ -1,16 +1,50 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useSessionStore } from '@/stores/sessions'
+import { useProjectStore } from '@/stores/projects'
 import StartSessionDialog from '@/components/StartSessionDialog.vue'
+import EditSessionDialog from '@/components/EditSessionDialog.vue'
 import dayjs from 'dayjs'
 
 const sessionStore = useSessionStore()
+const projectStore = useProjectStore()
 const showStartDialog = ref(false)
+const showEditDialog = ref(false)
+const sessionToEdit = ref(null)
 const loading = ref(false)
 const error = ref('')
 
+const filters = ref({
+  dateFrom: dayjs().subtract(30, 'day').format('YYYY-MM-DD'),
+  dateTo: dayjs().format('YYYY-MM-DD'),
+  projectId: null,
+  minSatisfaction: null
+})
+
 const activeSession = computed(() => sessionStore.activeSession)
-const recentSessions = computed(() => sessionStore.recentSessions)
+
+const filteredSessions = computed(() => {
+  let sessions = sessionStore.recentSessions.filter(s => s.end_time !== null)
+
+  // Apply filters
+  if (filters.value.projectId) {
+    sessions = sessions.filter(s => s.project_id === filters.value.projectId)
+  }
+
+  if (filters.value.minSatisfaction !== null && filters.value.minSatisfaction !== '') {
+    sessions = sessions.filter(s =>
+      s.satisfaction_score !== null && s.satisfaction_score >= filters.value.minSatisfaction
+    )
+  }
+
+  // Date range
+  sessions = sessions.filter(s => {
+    const date = dayjs(s.start_time).format('YYYY-MM-DD')
+    return date >= filters.value.dateFrom && date <= filters.value.dateTo
+  })
+
+  return sessions
+})
 
 onMounted(async () => {
   await loadData()
@@ -20,12 +54,57 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    await Promise.all([sessionStore.fetchActiveSession(), sessionStore.fetchRecentSessions(50)])
+    await Promise.all([
+      sessionStore.fetchActiveSession(),
+      sessionStore.fetchRecentSessions(200),
+      projectStore.fetchProjects()
+    ])
   } catch (err) {
     error.value = 'Failed to load sessions'
     console.error(err)
   } finally {
     loading.value = false
+  }
+}
+
+function exportToCSV() {
+  const headers = ['Date', 'Project', 'Planned Duration (min)', 'Actual Duration (min)', 'Satisfaction (%)', 'Tasks Done', 'Notes', 'Tags']
+  const rows = filteredSessions.value.map(s => [
+    dayjs(s.start_time).format('YYYY-MM-DD HH:mm'),
+    s.project?.name || 'No Project',
+    s.planned_duration || 0,
+    s.actual_duration || 0,
+    s.satisfaction_score !== null ? s.satisfaction_score : '',
+    s.tasks_done || '',
+    s.notes || '',
+    s.tags ? s.tags.map(t => t.name).join('; ') : ''
+  ])
+
+  const csv = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => {
+      const cellStr = String(cell).replace(/"/g, '""')
+      return `"${cellStr}"`
+    }).join(','))
+  ].join('\n')
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `sessions-${dayjs().format('YYYY-MM-DD')}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+function clearFilters() {
+  filters.value = {
+    dateFrom: dayjs().subtract(30, 'day').format('YYYY-MM-DD'),
+    dateTo: dayjs().format('YYYY-MM-DD'),
+    projectId: null,
+    minSatisfaction: null
   }
 }
 
@@ -60,6 +139,27 @@ function getSatisfactionEmoji(score) {
   if (score >= 60) return '🙂'
   if (score >= 40) return '😐'
   return '😞'
+}
+
+function openEditDialog(session) {
+  sessionToEdit.value = session
+  showEditDialog.value = true
+}
+
+function handleSessionUpdated() {
+  showEditDialog.value = false
+  sessionToEdit.value = null
+  loadData()
+}
+
+async function handleDeleteSession(session) {
+  if (confirm(`Delete session for ${session.project?.name || 'No Project'}?`)) {
+    try {
+      await sessionStore.deleteSession(session.id)
+    } catch (err) {
+      alert('Error deleting session: ' + (err.response?.data?.detail || err.message))
+    }
+  }
 }
 </script>
 
@@ -105,17 +205,72 @@ function getSatisfactionEmoji(score) {
         </div>
       </div>
 
-      <!-- Recent Sessions -->
-      <div class="sessions-section">
-        <h2 class="section-title">Recent Sessions</h2>
+      <!-- Filters -->
+      <div class="filters-section">
+        <div class="filters-header">
+          <h2 class="section-title">Filters</h2>
+          <button @click="clearFilters" class="btn-text">Clear All</button>
+        </div>
 
-        <div v-if="recentSessions.length === 0" class="empty-state">
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label class="filter-label">From</label>
+            <input type="date" v-model="filters.dateFrom" class="filter-input">
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">To</label>
+            <input type="date" v-model="filters.dateTo" class="filter-input">
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Project</label>
+            <select v-model="filters.projectId" class="filter-select">
+              <option :value="null">All Projects</option>
+              <option
+                v-for="p in projectStore.activeProjects"
+                :key="p.id"
+                :value="p.id"
+              >
+                {{ p.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Min Satisfaction</label>
+            <input
+              type="number"
+              v-model.number="filters.minSatisfaction"
+              min="0"
+              max="100"
+              placeholder="Any"
+              class="filter-input"
+            >
+          </div>
+
+          <div class="filter-group">
+            <button @click="exportToCSV" class="btn-export" title="Export filtered sessions to CSV">
+              📊 Export CSV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sessions List -->
+      <div class="sessions-section">
+        <h2 class="section-title">
+          Sessions
+          <span class="session-count">({{ filteredSessions.length }})</span>
+        </h2>
+
+        <div v-if="filteredSessions.length === 0" class="empty-state">
           <p>No sessions yet</p>
           <p class="empty-hint">Start your first session to track your work!</p>
         </div>
 
         <div v-else class="sessions-list">
-          <div v-for="session in recentSessions" :key="session.id" class="session-card">
+          <div v-for="session in filteredSessions" :key="session.id" class="session-card">
             <div class="session-header">
               <div class="session-project">
                 <div
@@ -125,9 +280,26 @@ function getSatisfactionEmoji(score) {
                 ></div>
                 <span class="project-name">{{ session.project?.name || 'No Project' }}</span>
               </div>
-              <div class="session-date">
-                {{ formatDateTime(session.start_time) }}
+              <div class="session-actions">
+                <button
+                  @click="openEditDialog(session)"
+                  class="action-icon-btn"
+                  title="Edit session"
+                >
+                  ✏️
+                </button>
+                <button
+                  @click="handleDeleteSession(session)"
+                  class="action-icon-btn danger"
+                  title="Delete session"
+                >
+                  🗑️
+                </button>
               </div>
+            </div>
+
+            <div class="session-date">
+              {{ formatDateTime(session.start_time) }}
             </div>
 
             <div class="session-stats">
@@ -182,6 +354,13 @@ function getSatisfactionEmoji(score) {
       v-if="showStartDialog"
       @close="showStartDialog = false"
       @started="handleSessionStarted"
+    />
+
+    <EditSessionDialog
+      v-if="showEditDialog && sessionToEdit"
+      :session="sessionToEdit"
+      @close="showEditDialog = false"
+      @saved="handleSessionUpdated"
     />
   </div>
 </template>
@@ -311,6 +490,90 @@ function getSatisfactionEmoji(score) {
   margin-top: 0.25rem;
 }
 
+.filters-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.filter-input,
+.filter-select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #111827;
+  background: white;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-text:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.btn-export {
+  padding: 0.5rem 1rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  width: 100%;
+}
+
+.btn-export:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
 .sessions-section {
   margin-bottom: 2rem;
 }
@@ -320,6 +583,13 @@ function getSatisfactionEmoji(score) {
   font-weight: 700;
   margin-bottom: 1rem;
   color: #111827;
+}
+
+.session-count {
+  font-size: 1rem;
+  color: #6b7280;
+  font-weight: 400;
+  margin-left: 0.5rem;
 }
 
 .empty-state {
@@ -356,13 +626,38 @@ function getSatisfactionEmoji(score) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .session-project {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.session-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-icon-btn {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.action-icon-btn:hover {
+  background: #f3f4f6;
+  transform: translateY(-1px);
+}
+
+.action-icon-btn.danger:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
 }
 
 .project-color {
