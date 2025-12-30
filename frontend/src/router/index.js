@@ -5,6 +5,8 @@ import Tags from '../views/Tags.vue'
 import Planning from '../views/Planning.vue'
 import Sessions from '../views/Sessions.vue'
 import Statistics from '../views/Statistics.vue'
+import SessionReview from '../views/SessionReview.vue'
+import Settings from '../views/Settings.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,6 +40,16 @@ const router = createRouter({
       path: '/statistics',
       name: 'statistics',
       component: Statistics
+    },
+    {
+      path: '/session-review/:id',
+      name: 'session-review',
+      component: SessionReview
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: Settings
     }
   ]
 })

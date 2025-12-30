@@ -2,8 +2,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.api import projects, tags, planning, sessions, statistics
+from app.core.config import settings as config_settings
+from app.api import projects, tags, planning, sessions, statistics, settings
 from app.tasks.notification_worker import notification_worker
 
 
@@ -27,7 +27,7 @@ app = FastAPI(
 # CORS middleware for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[f"http://localhost:{settings.FRONTEND_PORT}"],  # Frontend dev server
+    allow_origins=[f"http://localhost:{config_settings.FRONTEND_PORT}"],  # Frontend dev server
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,6 +39,7 @@ app.include_router(tags.router)
 app.include_router(planning.router)
 app.include_router(sessions.router)
 app.include_router(statistics.router)
+app.include_router(settings.router)
 
 
 @app.get("/")

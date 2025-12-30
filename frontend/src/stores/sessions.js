@@ -76,6 +76,20 @@ export const useSessionStore = defineStore('sessions', {
       }
     },
 
+    async getSession(sessionId) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get(`/api/sessions/${sessionId}`)
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
     async startSession(sessionData) {
       this.loading = true
       this.error = null
@@ -150,6 +164,25 @@ export const useSessionStore = defineStore('sessions', {
       this.error = null
       try {
         const response = await api.put(`/api/sessions/${sessionId}`, updateData)
+        // Update in recentSessions array
+        const index = this.recentSessions.findIndex(s => s.id === sessionId)
+        if (index !== -1) {
+          this.recentSessions[index] = response.data
+        }
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateSessionReview(sessionId, reviewData) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.put(`/api/sessions/${sessionId}/review`, reviewData)
         // Update in recentSessions array
         const index = this.recentSessions.findIndex(s => s.id === sessionId)
         if (index !== -1) {

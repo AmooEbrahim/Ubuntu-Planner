@@ -111,7 +111,7 @@ class NotificationWorker:
             if should_notify:
                 # Check if we sent notification recently (avoid duplicates)
                 if not self._was_notification_sent_recently(active_session.id, "session"):
-                    self._send_session_notification(active_session, overtime_minutes)
+                    self._send_session_notification(db, active_session, overtime_minutes)
                     self._mark_notification_sent(active_session.id, "session")
 
         except Exception as e:
@@ -173,13 +173,14 @@ class NotificationWorker:
         if should_notify:
             # Check if we already sent notification recently (avoid duplicates)
             if not self._was_notification_sent_recently(plan.id, "planning"):
-                self._send_planning_notification(plan, elapsed_minutes)
+                self._send_planning_notification(db, plan, elapsed_minutes)
                 self._mark_notification_sent(plan.id, "planning")
 
-    def _send_planning_notification(self, plan: Planning, elapsed_minutes: float):
+    def _send_planning_notification(self, db: Session, plan: Planning, elapsed_minutes: float):
         """Send notification for planning start.
 
         Args:
+            db: Database session
             plan: Planning item
             elapsed_minutes: Minutes elapsed since scheduled start
         """
@@ -200,7 +201,11 @@ class NotificationWorker:
                 message += f"\n{plan.description}"
 
         success = notification_service.send_notification(
-            title=title, message=message, urgency=urgency
+            title=title,
+            message=message,
+            urgency=urgency,
+            notification_type="planning_start",
+            db=db
         )
 
         if success:
@@ -210,10 +215,11 @@ class NotificationWorker:
                 f"Failed to send planning notification for: {plan.project.name}"
             )
 
-    def _send_session_notification(self, session: SessionModel, overtime: float):
+    def _send_session_notification(self, db: Session, session: SessionModel, overtime: float):
         """Send notification for session end.
 
         Args:
+            db: Database session
             session: Session model
             overtime: Minutes of overtime
         """
@@ -224,6 +230,7 @@ class NotificationWorker:
             title = f"Session Complete: {project_name}"
             message = f"Time is up! You've worked for {session.planned_duration} minutes.\n"
             message += "Consider taking a break or reviewing your session."
+            notification_type = "session_end"
         else:
             # Repeated notification (overtime)
             title = f"Still Working: {project_name}"
@@ -231,9 +238,14 @@ class NotificationWorker:
             message += f"Planned: {session.planned_duration} min, "
             total_elapsed = int(overtime + session.planned_duration)
             message += f"Elapsed: {total_elapsed} min"
+            notification_type = "session_reminder"
 
         success = notification_service.send_notification(
-            title=title, message=message, urgency="normal"
+            title=title,
+            message=message,
+            urgency="normal",
+            notification_type=notification_type,
+            db=db
         )
 
         if success:

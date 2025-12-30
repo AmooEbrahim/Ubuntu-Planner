@@ -15,9 +15,12 @@ FRONTEND_PORT=${FRONTEND_PORT:-5173}
 echo "Starting Ubuntu Planner in development mode..."
 echo ""
 
+# Get the absolute path to the project root
+PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+
 # Start backend
 echo "Starting backend on port $API_PORT..."
-cd backend && ./run-dev.sh &
+(cd "$PROJECT_ROOT/backend" && ./run-dev.sh) &
 BACKEND_PID=$!
 
 # Wait a moment for backend to start
@@ -25,19 +28,17 @@ sleep 2
 
 # Start frontend
 echo "Starting frontend on port $FRONTEND_PORT..."
-cd ../frontend && npm run dev &
+(cd "$PROJECT_ROOT/frontend" && npm run dev) &
 FRONTEND_PID=$!
 
 # Wait a moment for frontend to start
 sleep 2
 
 # Start tray icon (Phase 5)
-if [ -d "tray-icon" ] && [ -f "tray-icon/main.py" ]; then
+if [ -d "$PROJECT_ROOT/tray-icon" ] && [ -f "$PROJECT_ROOT/tray-icon/main.py" ]; then
     echo "Starting system tray icon..."
-    cd ../tray-icon
-    if [ -d "venv" ]; then
-        source venv/bin/activate
-        python3 main.py &
+    if [ -d "$PROJECT_ROOT/tray-icon/venv" ]; then
+        (cd "$PROJECT_ROOT/tray-icon" && source venv/bin/activate && python3 main.py) &
         TRAY_PID=$!
         echo "Tray icon PID: $TRAY_PID"
     else

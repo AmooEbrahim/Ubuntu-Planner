@@ -52,6 +52,14 @@ class SessionReview(BaseModel):
     tag_ids: Optional[List[int]] = None
 
 
+class SessionReviewUpdate(BaseModel):
+    """Schema for updating session review (from review page)."""
+
+    satisfaction: int
+    tasks: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class SessionUpdate(BaseModel):
     """Schema for updating a session."""
 
@@ -310,6 +318,37 @@ async def update_session(
     """
     try:
         return service.update_session(session_id, data.model_dump(exclude_unset=True))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.put("/{session_id}/review", response_model=SessionResponse)
+async def update_session_review(
+    session_id: int,
+    review_data: SessionReviewUpdate,
+    service: SessionService = Depends(get_service)
+):
+    """Update session review data.
+
+    Args:
+        session_id: ID of session to update
+        review_data: Review data
+        service: Session service instance
+
+    Returns:
+        Updated session
+
+    Raises:
+        HTTPException: If session not found
+    """
+    try:
+        # Map frontend names to database column names
+        update_data = {
+            'satisfaction_score': review_data.satisfaction,
+            'tasks_done': review_data.tasks,
+            'notes': review_data.notes
+        }
+        return service.update_session(session_id, update_data)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
