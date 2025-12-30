@@ -1,5 +1,6 @@
 <template>
   <div id="app" class="min-h-screen bg-gray-50">
+    <SessionBanner />
     <nav class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -13,6 +14,12 @@
             <RouterLink to="/tags" class="inline-flex items-center px-1 pt-1 text-gray-700 hover:text-blue-600">
               Tags
             </RouterLink>
+            <RouterLink to="/planning" class="inline-flex items-center px-1 pt-1 text-gray-700 hover:text-blue-600">
+              Planning
+            </RouterLink>
+            <RouterLink to="/sessions" class="inline-flex items-center px-1 pt-1 text-gray-700 hover:text-blue-600">
+              Sessions
+            </RouterLink>
           </div>
         </div>
       </div>
@@ -23,6 +30,7 @@
 
 <script setup>
 import { RouterView, RouterLink } from 'vue-router'
+import SessionBanner from '@/components/SessionBanner.vue'
 </script>
 
 <style scoped>

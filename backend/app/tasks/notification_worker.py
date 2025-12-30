@@ -1,4 +1,4 @@
-"""Background worker for sending planning notifications."""
+"""Background worker for sending planning and session notifications."""
 
 import asyncio
 import logging
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class NotificationWorker:
-    """Background worker to check and send planning notifications."""
+    """Background worker to check and send planning and session notifications."""
 
     def __init__(self):
         """Initialize notification worker."""
@@ -30,6 +30,7 @@ class NotificationWorker:
         while self._running:
             try:
                 await self._check_planning_notifications()
+                await self._check_session_notifications()
                 # Check every minute
                 await asyncio.sleep(60)
             except Exception as e:
@@ -64,6 +65,57 @@ class NotificationWorker:
 
         except Exception as e:
             logger.error(f"Error checking planning notifications: {e}")
+        finally:
+            db.close()
+
+    async def _check_session_notifications(self):
+        """Check for active sessions that should trigger notifications."""
+        db = SessionLocal()
+        try:
+            # Get active session
+            active_session = db.query(SessionModel).filter(SessionModel.end_time.is_(None)).first()
+
+            if not active_session:
+                return
+
+            # Skip if notifications disabled for this session
+            if active_session.notification_disabled:
+                return
+
+            now = datetime.now()
+            elapsed_minutes = (now - active_session.start_time).total_seconds() / 60
+
+            # Check if session time has expired
+            if elapsed_minutes < active_session.planned_duration:
+                return  # Not yet time
+
+            overtime_minutes = elapsed_minutes - active_session.planned_duration
+
+            # Determine notification interval
+            interval = 10  # Default
+            if active_session.project and active_session.project.notification_interval:
+                interval = active_session.project.notification_interval
+
+            # Send notification at interval boundaries
+            should_notify = False
+
+            if overtime_minutes < 1:
+                # First notification (just finished)
+                should_notify = True
+            else:
+                # Repeated notifications at interval
+                minutes_since_last = overtime_minutes % interval
+                if minutes_since_last < 1:
+                    should_notify = True
+
+            if should_notify:
+                # Check if we sent notification recently (avoid duplicates)
+                if not self._was_notification_sent_recently(active_session.id, "session"):
+                    self._send_session_notification(active_session, overtime_minutes)
+                    self._mark_notification_sent(active_session.id, "session")
+
+        except Exception as e:
+            logger.error(f"Error checking session notifications: {e}")
         finally:
             db.close()
 
@@ -157,6 +209,37 @@ class NotificationWorker:
             logger.warning(
                 f"Failed to send planning notification for: {plan.project.name}"
             )
+
+    def _send_session_notification(self, session: SessionModel, overtime: float):
+        """Send notification for session end.
+
+        Args:
+            session: Session model
+            overtime: Minutes of overtime
+        """
+        project_name = session.project.name if session.project else "Session"
+
+        if overtime < 1:
+            # Initial notification (time's up)
+            title = f"Session Complete: {project_name}"
+            message = f"Time is up! You've worked for {session.planned_duration} minutes.\n"
+            message += "Consider taking a break or reviewing your session."
+        else:
+            # Repeated notification (overtime)
+            title = f"Still Working: {project_name}"
+            message = f"You're {int(overtime)} minutes over planned time.\n"
+            message += f"Planned: {session.planned_duration} min, "
+            total_elapsed = int(overtime + session.planned_duration)
+            message += f"Elapsed: {total_elapsed} min"
+
+        success = notification_service.send_notification(
+            title=title, message=message, urgency="normal"
+        )
+
+        if success:
+            logger.info(f"Sent session notification for: {project_name}")
+        else:
+            logger.warning(f"Failed to send session notification for: {project_name}")
 
     def _was_notification_sent_recently(self, item_id: int, item_type: str) -> bool:
         """Check if notification was sent in last minute.
