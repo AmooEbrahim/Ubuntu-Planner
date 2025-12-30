@@ -5,13 +5,14 @@ Real-time work tracking with notifications, reviews, and productivity insights.
 ## Overview
 
 Execution tracking records actual work sessions. Features:
-- Start/stop session tracking
+- Start/stop session tracking via web or system tray
 - Track sessions with or without projects
 - Track sessions from planning or ad-hoc
 - Real-time duration tracking
 - Smart notifications when time expires
 - Optional detailed review after completion
 - Manual notes during work
+- Desktop integration with system tray icon (Phase 5)
 
 ## Session Lifecycle
 
@@ -178,10 +179,43 @@ def should_send_notification(session):
     return (overtime % interval) < 1  # Within 1 minute of interval
 ```
 
+## Desktop Integration (System Tray)
+
+**Phase 5** adds system tray icon for quick access.
+
+### Tray Icon States
+- **Idle** (gray): No active session
+- **Active** (green/blue): Session running on time
+- **Overtime** (orange/red): Session exceeded planned duration
+
+### Tray Menu - No Active Session
+- Start from current planning (if scheduled)
+- Start session without project
+- Pinned projects (quick start)
+- Recent projects (last 3)
+- Open web interface
+- Quit
+
+### Tray Menu - Active Session
+- Session info (project name, time elapsed/planned)
+- Stop & Review (opens review page in browser)
+- Quick Stop (end without review)
+- Toggle Notifications (enable/disable for this session)
+- Open web interface
+- Quit
+
+### Tray Features
+- Automatic polling (updates every 30 seconds)
+- Icon changes based on session state
+- Click to access quick actions
+- No need to keep browser open
+
+**See:** `Documents/roadmap/5/tray-icon.md` for implementation details
+
 ## Ending a Session
 
 ### Quick Stop
-1. User clicks "Stop"
+1. User clicks "Stop" (web or tray)
 2. Session ends immediately
 3. `end_time` set to now
 4. No review form shown
@@ -190,11 +224,11 @@ def should_send_notification(session):
 **Use case**: Quick tasks, interruptions, forgot to stop
 
 ### Stop & Review
-1. User clicks "Stop & Review"
+1. User clicks "Stop & Review" (web or tray)
 2. Session ends (`end_time` set)
-3. Review form opens
+3. Review page opens (in browser if from tray)
 
-**Review Form:**
+**Review Page:** `/session-review/:id`
 ```
 Session Review: [Project Name]
 Duration: [Actual duration] ([Planned duration] planned)

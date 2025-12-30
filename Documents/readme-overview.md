@@ -11,7 +11,8 @@ Complete documentation for Ubuntu Planner project.
 - **[Projects](readme-projects.md)** - Project management, nesting, archiving, pinning
 - **[Tags](readme-tags.md)** - Tag system, global vs project-specific tags
 - **[Planning](readme-planning.md)** - Scheduling work, priorities, overlap detection
-- **[Execution](readme-execution.md)** - Session tracking, notifications, reviews
+- **[Execution](readme-execution.md)** - Session tracking, notifications, reviews, tray icon
+- **[Settings](readme-settings.md)** - Configuration, notification settings, sound management
 - **[Web Interface](readme-web-interface.md)** - UI/UX, pages, components
 
 ### Development

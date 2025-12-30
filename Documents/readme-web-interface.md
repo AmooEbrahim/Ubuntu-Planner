@@ -47,7 +47,7 @@ Single-page application (SPA) built with Vue 3, providing complete access to all
 
 ### Header
 - **Logo/Title**: Ubuntu Planner
-- **Navigation**: Dashboard, Projects, Tags, Planning, Sessions, Stats
+- **Navigation**: Dashboard, Projects, Tags, Planning, Sessions, Stats, Settings (Phase 5)
 - **Active Session Banner**: Shows when session is active (collapsible)
 
 ### Active Session Banner
@@ -370,6 +370,152 @@ On-time starts: 22 (63%)
 
 [More charts...]
 ```
+
+### 7. Session Review (Phase 5)
+
+**Route:** `/session-review/:id`
+
+**Purpose**: Detailed session completion with feedback
+
+**Accessed**: After clicking "Stop & Review" from web or tray
+
+**Layout:**
+```
+Session Review
+
+Project: Web Development
+Planned: 60 minutes
+Actual: 75 minutes
+Started: 2025-12-30 14:00
+Ended: 2025-12-30 15:15
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+How satisfied are you with your performance?
+
+[━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━] 80
+0 ─────────────────────────────────── 100
+
+Good job! You're making progress.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+What did you accomplish?
+
+┌─────────────────────────────────────┐
+│ - Implemented user authentication   │
+│ - Fixed login bug                   │
+│ - Wrote unit tests                  │
+│                                     │
+└─────────────────────────────────────┘
+145 / 500 characters
+
+Personal Notes (Optional)
+
+┌─────────────────────────────────────┐
+│ Got distracted by emails midway.    │
+│ Need to improve focus next time.    │
+│                                     │
+└─────────────────────────────────────┘
+82 / 1000 characters
+
+[Skip Review]  [Save & Continue]
+```
+
+**Features:**
+- Session summary (read-only)
+- Satisfaction slider (0-100, default 80)
+- Dynamic feedback based on rating
+- Tasks completed textarea (500 char limit)
+- Personal notes textarea (1000 char limit)
+- Character counters
+- Skip or save options
+- Redirects to Sessions page after save
+
+**See:** `Documents/roadmap/5/session-review.md`
+
+### 8. Settings (Phase 5)
+
+**Route:** `/settings`
+
+**Purpose**: Application configuration
+
+**Sections:**
+- General Settings
+- Notification Settings (3 types)
+- Sound Management
+
+**Layout:**
+```
+Settings
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+General Settings
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Language
+[English ▼]
+
+Default Reminder Interval (minutes)
+[10]
+How often to remind about unstarted planned work.
+
+Session Poll Interval (seconds)
+[120]
+How often to check for session updates.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Notification Settings
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Planning Start Notification
+When scheduled work time arrives
+
+☑ Enable notifications
+
+  ☑ Play sound
+
+    Sound File
+    [complete.oga ▼] [▶ Preview]
+
+    Play Count
+    [1 time ▼]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Session End Notification
+When session time is up (first notification)
+
+☑ Enable notifications
+  ☑ Play sound
+    [complete.oga ▼] [▶ Preview]
+    [1 time ▼]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Session Reminder Notification
+Repeated reminders after session time is up
+
+☑ Enable notifications
+  ☑ Play sound
+    [dialog-warning.oga ▼] [▶ Preview]
+    [2 times ▼]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Reset to Defaults]  [Save Changes]
+```
+
+**Features:**
+- All settings editable in one page
+- Sound preview without saving
+- Per-notification-type configuration
+- Bulk save (all changes at once)
+- Reset to defaults option
+- Real-time validation
+- Available sounds auto-populated
+
+**See:** `Documents/roadmap/5/settings.md` and `Documents/readme-settings.md`
 
 ## Components
 
