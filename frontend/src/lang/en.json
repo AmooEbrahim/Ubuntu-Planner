@@ -1,0 +1,24 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search"
+  },
+  "errors": {
+    "failed_to_load": "Failed to load data",
+    "failed_to_save": "Failed to save data",
+    "failed_to_delete": "Failed to delete",
+    "network_error": "Network error occurred"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "planning": "Planning",
+    "sessions": "Sessions",
+    "statistics": "Statistics"
+  }
+}

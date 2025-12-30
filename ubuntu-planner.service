@@ -1,0 +1,15 @@
+[Unit]
+Description=Ubuntu Planner Service
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=%u
+WorkingDirectory=/home/%u/bin/bash/Ubuntu-Planner/backend
+Environment="PATH=/home/%u/bin/bash/Ubuntu-Planner/backend/venv/bin"
+ExecStart=/home/%u/bin/bash/Ubuntu-Planner/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 1717
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -36,7 +36,7 @@ NOTIFICATION_PORT=52346
 
 # Application
 API_HOST=localhost
-API_PORT=8000
+API_PORT=9090
 FRONTEND_PORT=5173
 
 # Development
@@ -56,7 +56,7 @@ NOTIFICATION_HOST=localhost
 NOTIFICATION_PORT=52346
 
 API_HOST=localhost
-API_PORT=8000
+API_PORT=9090
 FRONTEND_PORT=5173
 
 DEBUG=True
@@ -176,7 +176,7 @@ class Settings(BaseSettings):
 
     # Application
     API_HOST: str = "localhost"
-    API_PORT: int = 8000
+    API_PORT: int = 9090
     DEBUG: bool = False
 
     class Config:
@@ -341,7 +341,7 @@ export default {
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: 'http://localhost:9090',
   timeout: 10000,
 })
 
@@ -391,7 +391,7 @@ Type=simple
 User=%u
 WorkingDirectory=/home/%u/bin/bash/Ubuntu-Planner/backend
 Environment="PATH=/home/%u/bin/bash/Ubuntu-Planner/backend/venv/bin"
-ExecStart=/home/%u/bin/bash/Ubuntu-Planner/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+ExecStart=/home/%u/bin/bash/Ubuntu-Planner/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 9090
 Restart=always
 RestartSec=10
 
@@ -414,7 +414,7 @@ systemctl --user start ubuntu-planner
 ```bash
 #!/bin/bash
 source venv/bin/activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 9090
 ```
 
 **Create frontend/run-dev.sh:**
@@ -461,7 +461,7 @@ wait
 - [ ] Language files created
 - [ ] systemd service file created
 - [ ] Development scripts created
-- [ ] Backend starts successfully (http://localhost:8000)
+- [ ] Backend starts successfully (http://localhost:9090)
 - [ ] Frontend starts successfully (http://localhost:5173)
 - [ ] API health endpoint works (GET /health)
 - [ ] CORS configured correctly
@@ -476,7 +476,7 @@ source venv/bin/activate
 uvicorn app.main:app --reload
 
 # In another terminal:
-curl http://localhost:8000/health
+curl http://localhost:9090/health
 # Should return: {"status":"healthy"}
 ```
 
