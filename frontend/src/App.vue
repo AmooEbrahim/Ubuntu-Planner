@@ -23,6 +23,9 @@
             <RouterLink to="/statistics" class="inline-flex items-center px-1 pt-1 text-gray-700 hover:text-blue-600">
               Statistics
             </RouterLink>
+            <RouterLink to="/settings" class="inline-flex items-center px-1 pt-1 text-gray-700 hover:text-blue-600">
+              Settings
+            </RouterLink>
           </div>
         </div>
       </div>

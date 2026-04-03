@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.core.database import get_db
 from app.models.project import Project
 from app.services.project_service import ProjectService
@@ -49,8 +49,7 @@ class ProjectResponse(BaseModel):
     is_archived: bool
     is_pinned: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 def get_service(db: Session = Depends(get_db)) -> ProjectService:
@@ -136,7 +135,7 @@ async def create_project(
         HTTPException: If validation fails
     """
     try:
-        return service.create(data.dict())
+        return service.create(data.model_dump())
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -161,7 +160,7 @@ async def update_project(
         HTTPException: If validation fails or project not found
     """
     try:
-        return service.update(project_id, data.dict(exclude_unset=True))
+        return service.update(project_id, data.model_dump(exclude_unset=True))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

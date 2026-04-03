@@ -2,8 +2,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { usePlanningStore } from '@/stores/planning'
 import { useProjectStore } from '@/stores/projects'
+import TagMultiSelect from '@/components/TagMultiSelect.vue'
 import dayjs from 'dayjs'
-import TagSelector from '@/components/TagSelector.vue'
+import utc from 'dayjs/plugin/utc'
+
+dayjs.extend(utc)
 
 const props = defineProps({
   planning: {
@@ -27,12 +30,14 @@ const projectStore = useProjectStore()
 
 const formData = ref({
   project_id: props.planning?.project_id || null,
-  scheduled_start: props.planning?.scheduled_start ||
-    (props.defaultStartTime
+  scheduled_start: props.planning?.scheduled_start
+    ? dayjs.utc(props.planning.scheduled_start).local().format('YYYY-MM-DDTHH:mm')
+    : (props.defaultStartTime
       ? dayjs(props.defaultDate).format('YYYY-MM-DD') + 'T' + props.defaultStartTime
       : dayjs(props.defaultDate).hour(9).minute(0).format('YYYY-MM-DDTHH:mm')),
-  scheduled_end: props.planning?.scheduled_end ||
-    (props.defaultStartTime
+  scheduled_end: props.planning?.scheduled_end
+    ? dayjs.utc(props.planning.scheduled_end).local().format('YYYY-MM-DDTHH:mm')
+    : (props.defaultStartTime
       ? dayjs(props.defaultDate).format('YYYY-MM-DD') + 'T' + dayjs(props.defaultStartTime, 'HH:mm').add(1, 'hour').format('HH:mm')
       : dayjs(props.defaultDate).hour(10).minute(0).format('YYYY-MM-DDTHH:mm')),
   priority: props.planning?.priority || 'medium',
@@ -43,12 +48,34 @@ const formData = ref({
 const isEdit = computed(() => !!props.planning)
 const error = ref('')
 const saving = ref(false)
+const searchQuery = ref('')
+const projectsLoading = ref(false)
 
 const durationMinutes = computed(() => {
   const start = dayjs(formData.value.scheduled_start)
   const end = dayjs(formData.value.scheduled_end)
   return end.diff(start, 'minute')
 })
+
+const filteredProjects = computed(() => {
+  if (!searchQuery.value) {
+    // Show top 5 projects when search is empty
+    return projectStore.activeProjects.slice(0, 5)
+  }
+  const query = searchQuery.value.toLowerCase()
+  return projectStore.activeProjects.filter(p =>
+    p.name.toLowerCase().includes(query)
+  ).slice(0, 10)
+})
+
+const selectedProject = computed(() => {
+  return projectStore.projects.find(p => p.id === formData.value.project_id)
+})
+
+function selectProject(projectId) {
+  formData.value.project_id = projectId
+  searchQuery.value = ''
+}
 
 function addDuration(minutes) {
   const start = dayjs(formData.value.scheduled_start)
@@ -94,7 +121,9 @@ function handleCancel() {
 
 onMounted(async () => {
   if (projectStore.projects.length === 0) {
+    projectsLoading.value = true
     await projectStore.fetchProjects()
+    projectsLoading.value = false
   }
 })
 </script>
@@ -112,18 +141,48 @@ onMounted(async () => {
           {{ error }}
         </div>
 
+        <!-- Project Selection with Search -->
         <div class="form-group">
           <label class="form-label">Project <span class="required">*</span></label>
-          <select v-model="formData.project_id" required class="form-select">
-            <option :value="null" disabled>Select a project</option>
-            <option
-              v-for="project in projectStore.activeProjects"
-              :key="project.id"
-              :value="project.id"
-            >
-              {{ project.name }}
-            </option>
-          </select>
+          <div class="project-select">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search projects..."
+              class="search-input"
+              :disabled="projectsLoading"
+            />
+
+            <!-- Loading State -->
+            <div v-if="projectsLoading" class="dropdown">
+              <div class="loading-state">Loading projects...</div>
+            </div>
+
+            <!-- Search Results / Initial Projects -->
+            <div v-else-if="searchQuery || !selectedProject" class="dropdown">
+              <div v-if="filteredProjects.length === 0" class="no-results">
+                No projects found
+              </div>
+              <button
+                v-else
+                v-for="project in filteredProjects"
+                :key="project.id"
+                type="button"
+                @click="selectProject(project.id)"
+                class="project-option"
+              >
+                <span class="color-indicator" :style="{ backgroundColor: project.color }"></span>
+                <span>{{ project.name }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Selected Project Display -->
+          <div v-if="selectedProject" class="selected-project">
+            <span class="color-indicator" :style="{ backgroundColor: selectedProject.color }"></span>
+            <span>{{ selectedProject.name }}</span>
+            <button type="button" @click="formData.project_id = null" class="clear-btn">×</button>
+          </div>
         </div>
 
         <div class="form-row">
@@ -205,12 +264,12 @@ onMounted(async () => {
 
         <div class="form-group">
           <label class="form-label">Tags</label>
-          <TagSelector :project-id="formData.project_id" v-model="formData.tag_ids" />
+          <TagMultiSelect v-model="formData.tag_ids" />
         </div>
 
         <div class="form-actions">
           <button type="button" @click="handleCancel" class="btn btn-secondary">Cancel</button>
-          <button type="submit" :disabled="saving" class="btn btn-primary">
+          <button type="submit" :disabled="saving || !formData.project_id" class="btn btn-primary">
             {{ saving ? 'Saving...' : 'Save Planning' }}
           </button>
         </div>
@@ -316,6 +375,102 @@ onMounted(async () => {
   outline: none;
   border-color: #10b981;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Project Search Styles */
+.project-select {
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.625rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  border-color: #10b981;
+}
+
+.search-input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0.25rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.project-option {
+  width: 100%;
+  padding: 0.625rem;
+  border: none;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+
+.project-option:hover {
+  background-color: #f3f4f6;
+}
+
+.color-indicator {
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.loading-state,
+.no-results {
+  padding: 1rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.selected-project {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.clear-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+.clear-btn:hover {
+  color: #374151;
 }
 
 .duration-info {

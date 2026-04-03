@@ -2,7 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useSessionStore } from '@/stores/sessions'
 import { useProjectStore } from '@/stores/projects'
-import { useTagStore } from '@/stores/tags'
+import TagMultiSelect from '@/components/TagMultiSelect.vue'
+import dayjs from 'dayjs'
 
 const props = defineProps({
   session: {
@@ -15,10 +16,11 @@ const emit = defineEmits(['close', 'saved'])
 
 const sessionStore = useSessionStore()
 const projectStore = useProjectStore()
-const tagStore = useTagStore()
 
 const form = ref({
   project_id: props.session.project_id,
+  start_time: props.session.start_time ? dayjs(props.session.start_time).format('YYYY-MM-DDTHH:mm') : '',
+  end_time: props.session.end_time ? dayjs(props.session.end_time).format('YYYY-MM-DDTHH:mm') : '',
   planned_duration: props.session.planned_duration,
   actual_duration: props.session.actual_duration,
   satisfaction_score: props.session.satisfaction_score,
@@ -31,10 +33,9 @@ const saving = ref(false)
 const error = ref('')
 
 onMounted(async () => {
-  await Promise.all([
-    projectStore.fetchProjects(),
-    tagStore.fetchTags()
-  ])
+  if (projectStore.projects.length === 0) {
+    await projectStore.fetchProjects()
+  }
 })
 
 async function handleSubmit() {
@@ -42,7 +43,14 @@ async function handleSubmit() {
   error.value = ''
 
   try {
-    await sessionStore.updateSession(props.session.id, form.value)
+    // Prepare data with ISO formatted times
+    const updateData = {
+      ...form.value,
+      start_time: form.value.start_time ? dayjs(form.value.start_time).toISOString() : null,
+      end_time: form.value.end_time ? dayjs(form.value.end_time).toISOString() : null
+    }
+
+    await sessionStore.updateSession(props.session.id, updateData)
     emit('saved')
     emit('close')
   } catch (err) {
@@ -50,19 +58,6 @@ async function handleSubmit() {
   } finally {
     saving.value = false
   }
-}
-
-function toggleTag(tagId) {
-  const index = form.value.tag_ids.indexOf(tagId)
-  if (index > -1) {
-    form.value.tag_ids.splice(index, 1)
-  } else {
-    form.value.tag_ids.push(tagId)
-  }
-}
-
-function isTagSelected(tagId) {
-  return form.value.tag_ids.includes(tagId)
 }
 </script>
 
@@ -92,6 +87,28 @@ function isTagSelected(tagId) {
               {{ project.name }}
             </option>
           </select>
+        </div>
+
+        <!-- Start & End Time -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Time</label>
+            <input
+              type="datetime-local"
+              v-model="form.start_time"
+              class="form-input"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">End Time</label>
+            <input
+              type="datetime-local"
+              v-model="form.end_time"
+              class="form-input"
+            />
+          </div>
         </div>
 
         <!-- Duration -->
@@ -167,23 +184,7 @@ function isTagSelected(tagId) {
         <!-- Tags -->
         <div class="form-group">
           <label class="form-label">Tags</label>
-          <div class="tags-list">
-            <button
-              v-for="tag in tagStore.activeTags"
-              :key="tag.id"
-              type="button"
-              @click="toggleTag(tag.id)"
-              class="tag-btn"
-              :class="{ selected: isTagSelected(tag.id) }"
-              :style="{
-                backgroundColor: isTagSelected(tag.id) ? tag.color : 'transparent',
-                borderColor: tag.color,
-                color: isTagSelected(tag.id) ? 'white' : tag.color
-              }"
-            >
-              {{ tag.name }}
-            </button>
-          </div>
+          <TagMultiSelect v-model="form.tag_ids" />
         </div>
 
         <!-- Actions -->
@@ -339,26 +340,6 @@ function isTagSelected(tagId) {
 .btn-text:hover {
   color: #2563eb;
   text-decoration: underline;
-}
-
-.tags-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.tag-btn {
-  padding: 0.5rem 1rem;
-  border: 2px solid;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tag-btn:hover {
-  opacity: 0.8;
 }
 
 .dialog-actions {

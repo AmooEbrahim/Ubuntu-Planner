@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.core.database import get_db
 from app.services.tag_service import TagService
 
@@ -34,8 +34,7 @@ class TagResponse(BaseModel):
     color: str
     project_id: Optional[int]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 def get_service(db: Session = Depends(get_db)) -> TagService:
@@ -121,7 +120,7 @@ async def create_tag(
         HTTPException: If validation fails
     """
     try:
-        return service.create(data.dict())
+        return service.create(data.model_dump())
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -146,7 +145,7 @@ async def update_tag(
         HTTPException: If validation fails or tag not found
     """
     try:
-        return service.update(tag_id, data.dict(exclude_unset=True))
+        return service.update(tag_id, data.model_dump(exclude_unset=True))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

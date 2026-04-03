@@ -5,7 +5,7 @@ const props = defineProps({
   project: Object
 })
 
-const emit = defineEmits(['edit', 'delete', 'toggle-archive', 'toggle-pin'])
+const emit = defineEmits(['edit', 'delete', 'toggle-archive', 'toggle-pin', 'add-child', 'start-session'])
 
 const expanded = ref(false)
 
@@ -49,6 +49,20 @@ function toggleExpand() {
         </div>
 
         <div class="flex items-center gap-2">
+          <button
+            @click="emit('start-session', project)"
+            class="text-sm px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+            title="Start session with this project"
+          >
+            ▶ Start
+          </button>
+          <button
+            @click="emit('add-child', project)"
+            class="text-sm px-3 py-1 text-gray-600 hover:text-gray-800"
+            title="Add child project"
+          >
+            + Child
+          </button>
           <button
             @click="emit('toggle-pin', project)"
             class="text-sm px-3 py-1 text-gray-600 hover:text-yellow-600"
@@ -95,6 +109,8 @@ function toggleExpand() {
         @delete="emit('delete', $event)"
         @toggle-archive="emit('toggle-archive', $event)"
         @toggle-pin="emit('toggle-pin', $event)"
+        @add-child="emit('add-child', $event)"
+        @start-session="emit('start-session', $event)"
       />
     </div>
   </div>

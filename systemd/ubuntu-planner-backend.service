@@ -1,0 +1,16 @@
+[Unit]
+Description=Ubuntu Planner Backend API
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ebrhaim/bin/bash/Ubuntu-Planner/backend
+Environment="PATH=/home/ebrhaim/bin/bash/Ubuntu-Planner/backend/venv/bin:/usr/bin:/bin"
+EnvironmentFile=/home/ebrhaim/bin/bash/Ubuntu-Planner/.env
+ExecStart=/home/ebrhaim/bin/bash/Ubuntu-Planner/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${API_PORT}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

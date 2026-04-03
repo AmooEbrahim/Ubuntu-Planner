@@ -1,6 +1,9 @@
 <script setup>
 import { computed } from 'vue'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+
+dayjs.extend(utc)
 
 const props = defineProps({
   date: {
@@ -21,9 +24,9 @@ const hours = Array.from({ length: 24 }, (_, i) => i)
 // Helper to get planning items for a specific hour
 function getPlanningForHour(hour) {
   return props.planning.filter((p) => {
-    const startHour = dayjs(p.scheduled_start).hour()
-    const endHour = dayjs(p.scheduled_end).hour()
-    const endMinute = dayjs(p.scheduled_end).minute()
+    const startHour = dayjs.utc(p.scheduled_start).local().hour()
+    const endHour = dayjs.utc(p.scheduled_end).local().hour()
+    const endMinute = dayjs.utc(p.scheduled_end).local().minute()
 
     // Include if planning starts in this hour or spans across it
     return (
@@ -35,8 +38,8 @@ function getPlanningForHour(hour) {
 
 // Calculate position and height for planning item
 function getPlanningStyle(planning) {
-  const start = dayjs(planning.scheduled_start)
-  const end = dayjs(planning.scheduled_end)
+  const start = dayjs.utc(planning.scheduled_start).local()
+  const end = dayjs.utc(planning.scheduled_end).local()
 
   const startHour = start.hour()
   const startMinute = start.minute()
@@ -73,7 +76,7 @@ function getPriorityColor(priority) {
 
 // Format time
 function formatTime(datetime) {
-  return dayjs(datetime).format('HH:mm')
+  return dayjs.utc(datetime).local().format('HH:mm')
 }
 
 // Handle hour click to create planning
@@ -84,7 +87,7 @@ function handleHourClick(hour) {
 
 // Calculate if planning should be displayed in this hour slot
 function shouldDisplayInHour(planning, hour) {
-  const startHour = dayjs(planning.scheduled_start).hour()
+  const startHour = dayjs.utc(planning.scheduled_start).local().hour()
   return startHour === hour
 }
 </script>

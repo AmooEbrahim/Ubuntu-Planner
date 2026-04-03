@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session as DBSession
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from app.core.database import get_db
 from app.services.session_service import SessionService
 
@@ -19,8 +19,7 @@ class TagResponse(BaseModel):
     name: str
     color: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectResponse(BaseModel):
@@ -30,8 +29,7 @@ class ProjectResponse(BaseModel):
     name: str
     color: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SessionStart(BaseModel):
@@ -98,13 +96,13 @@ class SessionResponse(BaseModel):
     satisfaction_score: Optional[int]
     tasks_done: Optional[str]
     notification_disabled: bool
+    elapsed_minutes: Optional[int] = None  # Computed field for active sessions
     created_at: datetime
     updated_at: datetime
     project: Optional[ProjectResponse] = None
     tags: List[TagResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Dependency
@@ -129,9 +127,16 @@ async def get_active_session(service: SessionService = Depends(get_service)):
         service: Session service instance
 
     Returns:
-        Active session or None
+        Active session or None with elapsed_minutes computed
     """
-    return service.get_active_session()
+    session = service.get_active_session()
+
+    if session and not session.end_time:
+        # Calculate elapsed minutes for active session
+        elapsed = datetime.now() - session.start_time
+        session.elapsed_minutes = int(elapsed.total_seconds() / 60)
+
+    return session
 
 
 @router.get("/recent", response_model=List[SessionResponse])

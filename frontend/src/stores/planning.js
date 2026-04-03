@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import api from '@/services/api'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+
+dayjs.extend(utc)
 
 export const usePlanningStore = defineStore('planning', {
   state: () => ({
@@ -14,14 +17,14 @@ export const usePlanningStore = defineStore('planning', {
     todayPlanning: (state) => {
       const today = dayjs().format('YYYY-MM-DD')
       return state.planning.filter((p) =>
-        dayjs(p.scheduled_start).format('YYYY-MM-DD') === today
+        dayjs.utc(p.scheduled_start).local().format('YYYY-MM-DD') === today
       )
     },
 
     planningByDate: (state) => (date) => {
       const dateStr = dayjs(date).format('YYYY-MM-DD')
       return state.planning.filter((p) =>
-        dayjs(p.scheduled_start).format('YYYY-MM-DD') === dateStr
+        dayjs.utc(p.scheduled_start).local().format('YYYY-MM-DD') === dateStr
       ).sort((a, b) => new Date(a.scheduled_start) - new Date(b.scheduled_start))
     },
 

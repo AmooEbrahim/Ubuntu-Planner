@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 from pathlib import Path
 
@@ -23,11 +23,10 @@ class Settings(BaseSettings):
     FRONTEND_PORT: int = 5173
     DEBUG: bool = False
 
-    class Config:
-        # Look for .env in the parent directory (project root)
-        env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
-        # Allow extra fields (like VITE_API_URL which is only for frontend)
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parent.parent.parent.parent / ".env",
+        extra="ignore",
+    )
 
     @property
     def database_url(self) -> str:

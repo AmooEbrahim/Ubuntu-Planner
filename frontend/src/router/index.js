@@ -4,6 +4,7 @@ import Projects from '../views/Projects.vue'
 import Tags from '../views/Tags.vue'
 import Planning from '../views/Planning.vue'
 import Sessions from '../views/Sessions.vue'
+import SessionsDaily from '../views/SessionsDaily.vue'
 import Statistics from '../views/Statistics.vue'
 import SessionReview from '../views/SessionReview.vue'
 import Settings from '../views/Settings.vue'
@@ -34,6 +35,11 @@ const router = createRouter({
     {
       path: '/sessions',
       name: 'sessions',
+      component: SessionsDaily
+    },
+    {
+      path: '/sessions/list',
+      name: 'sessions-list',
       component: Sessions
     },
     {

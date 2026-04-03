@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/sessions'
+import TagMultiSelect from '@/components/TagMultiSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,6 +12,7 @@ const session = ref(null)
 const satisfaction = ref(80)
 const tasks = ref('')
 const notes = ref('')
+const selectedTags = ref([])
 const loading = ref(true)
 
 const satisfactionFeedback = computed(() => {
@@ -39,6 +41,9 @@ onMounted(async () => {
     if (session.value.notes) {
       notes.value = session.value.notes
     }
+    if (session.value.tags) {
+      selectedTags.value = session.value.tags.map(t => t.id)
+    }
   } catch (error) {
     console.error('Failed to load session:', error)
   } finally {
@@ -51,7 +56,8 @@ async function saveReview() {
     await sessionStore.updateSessionReview(route.params.id, {
       satisfaction: satisfaction.value,
       tasks: tasks.value || null,
-      notes: notes.value || null
+      notes: notes.value || null,
+      tag_ids: selectedTags.value
     })
 
     router.push('/sessions')
@@ -162,6 +168,12 @@ function formatDateTime(dateTime) {
           class="form-textarea"
         ></textarea>
         <div class="char-count">{{ notesCharCount }} / 1000 characters</div>
+      </div>
+
+      <!-- Tags -->
+      <div class="form-section">
+        <label class="section-title">Tags (Optional)</label>
+        <TagMultiSelect v-model="selectedTags" />
       </div>
 
       <!-- Actions -->

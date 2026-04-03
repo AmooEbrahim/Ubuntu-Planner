@@ -1,0 +1,18 @@
+[Unit]
+Description=Ubuntu Planner System Tray Icon
+After=ubuntu-planner-backend.service graphical-session.target
+Wants=ubuntu-planner-backend.service
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ebrhaim/bin/bash/Ubuntu-Planner/tray-icon
+Environment="PATH=/home/ebrhaim/bin/bash/Ubuntu-Planner/tray-icon/venv/bin:/usr/bin:/bin"
+Environment="DISPLAY=:0"
+EnvironmentFile=/home/ebrhaim/bin/bash/Ubuntu-Planner/.env
+ExecStart=/home/ebrhaim/bin/bash/Ubuntu-Planner/tray-icon/venv/bin/python3 main.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

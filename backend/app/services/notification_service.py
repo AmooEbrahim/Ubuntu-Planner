@@ -120,18 +120,27 @@ class NotificationService:
             db: Database session
 
         Returns:
-            Configuration file content
+            Configuration file content in proper INI format
         """
-        config = f"""[notification]
-title={title}
-message={message}
-urgency={urgency}
-timeout={timeout}
-"""
-        if icon:
-            config += f"icon={icon}\n"
+        # Build [notification] section
+        config_lines = [
+            "[notification]",
+            "notification_enabled=true",
+            f"title={title}",
+            f"body={message}",
+        ]
 
-        # Add sound configuration if type and db provided
+        if icon:
+            config_lines.append(f"icon={icon}")
+
+        config_lines.extend([
+            f"urgency={urgency}",
+            f"timeout={timeout}",
+            "transient=true",
+            ""  # Empty line between sections
+        ])
+
+        # Build [sound] section if type and db provided
         if notification_type and db:
             notif_config = self._get_notification_config(notification_type, db)
 
@@ -140,13 +149,17 @@ timeout={timeout}
                 sound_path = sound_service.get_sound_path(sound_file)
 
                 if sound_path:
-                    config += f"sound={sound_path}\n"
-
                     sound_repeat = notif_config.get('sound_repeat', 1)
-                    if sound_repeat > 1:
-                        config += f"sound_repeat={sound_repeat}\n"
+                    config_lines.extend([
+                        "[sound]",
+                        "sound_enabled=true",
+                        f"file={sound_path}",
+                        "play=true",
+                        f"repeat={sound_repeat}",
+                        "sleep=1"
+                    ])
 
-        return config
+        return "\n".join(config_lines) + "\n"
 
     def _write_temp_config(self, content: str) -> str:
         """Write config to temporary file and return path."""

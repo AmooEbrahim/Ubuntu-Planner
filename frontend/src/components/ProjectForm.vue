@@ -3,7 +3,8 @@ import { ref, computed } from 'vue'
 import { useProjectStore } from '@/stores/projects'
 
 const props = defineProps({
-  project: Object  // null for create, object for edit
+  project: Object,  // null for create, object for edit
+  parentProject: Object  // parent project when creating a child
 })
 
 const emit = defineEmits(['close', 'saved'])
@@ -12,7 +13,7 @@ const projectStore = useProjectStore()
 
 const formData = ref({
   name: props.project?.name || '',
-  parent_id: props.project?.parent_id || null,
+  parent_id: props.project?.parent_id || props.parentProject?.id || null,
   color: props.project?.color || '#3B82F6',
   description: props.project?.description || '',
   default_duration: props.project?.default_duration || 60,

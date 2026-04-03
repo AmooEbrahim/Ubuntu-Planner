@@ -2,67 +2,64 @@
 import { ref, computed, onMounted } from 'vue'
 import { useSessionStore } from '@/stores/sessions'
 import { useProjectStore } from '@/stores/projects'
-import { usePlanningStore } from '@/stores/planning'
+import TagMultiSelect from './TagMultiSelect.vue'
 import dayjs from 'dayjs'
 
 const emit = defineEmits(['close', 'started'])
 
 const sessionStore = useSessionStore()
 const projectStore = useProjectStore()
-const planningStore = usePlanningStore()
 
-const selectedProject = ref(null)
-const selectedPlanning = ref(null)
+const selectedProjectId = ref(null)
 const duration = ref(60)
-const mode = ref('project') // 'project' or 'planning'
+const selectedTags = ref([])
+const searchQuery = ref('')
 const loading = ref(false)
+const projectsLoading = ref(false)
 const error = ref('')
 
-const todayPlanning = computed(() => planningStore.todayPlanning)
-const pinnedProjects = computed(() => projectStore.pinnedProjects)
-const activeProjects = computed(() => projectStore.activeProjects)
-
 onMounted(async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      projectStore.projects.length === 0 ? projectStore.fetchProjects() : Promise.resolve(),
-      planningStore.fetchTodayPlanning(),
-    ])
-  } catch (err) {
-    error.value = 'Failed to load data'
-  } finally {
-    loading.value = false
+  if (projectStore.projects.length === 0) {
+    projectsLoading.value = true
+    await projectStore.fetchProjects()
+    projectsLoading.value = false
   }
 })
 
-function selectProject(project) {
-  selectedProject.value = project
-  selectedPlanning.value = null
-  duration.value = project.default_duration || 60
-  mode.value = 'project'
-}
+const filteredProjects = computed(() => {
+  if (!searchQuery.value) {
+    // Show top 5 projects when search is empty
+    return projectStore.activeProjects.slice(0, 5)
+  }
+  const query = searchQuery.value.toLowerCase()
+  return projectStore.activeProjects.filter(p =>
+    p.name.toLowerCase().includes(query)
+  ).slice(0, 10)
+})
 
-function selectPlanning(planning) {
-  selectedPlanning.value = planning
-  selectedProject.value = planning.project
-  const start = dayjs(planning.scheduled_start)
-  const end = dayjs(planning.scheduled_end)
-  duration.value = Math.floor(end.diff(start, 'minute'))
-  mode.value = 'planning'
+const selectedProject = computed(() => {
+  return projectStore.projects.find(p => p.id === selectedProjectId.value)
+})
+
+const endTime = computed(() => {
+  if (!duration.value) return null
+  return dayjs().add(duration.value, 'minute').format('HH:mm')
+})
+
+function selectProject(projectId) {
+  selectedProjectId.value = projectId
+  const project = projectStore.projects.find(p => p.id === projectId)
+  if (project?.default_duration) {
+    duration.value = project.default_duration
+  }
+  searchQuery.value = ''
 }
 
 async function handleStart() {
-  if (!selectedProject.value && !selectedPlanning.value) {
-    error.value = 'Please select a project or planning'
-    return
-  }
-
   const sessionData = {
-    project_id: selectedProject.value?.id || null,
+    project_id: selectedProjectId.value,
     planned_duration: duration.value,
-    planning_id: mode.value === 'planning' ? selectedPlanning.value?.id : null,
-    tag_ids: [],
+    tag_ids: selectedTags.value,
   }
 
   try {
@@ -76,15 +73,11 @@ async function handleStart() {
     loading.value = false
   }
 }
-
-function formatTime(datetime) {
-  return dayjs(datetime).format('HH:mm')
-}
 </script>
 
 <template>
   <div class="modal-overlay" @click.self="emit('close')">
-    <div class="modal-content large">
+    <div class="modal-content">
       <div class="modal-header">
         <h2>Start Session</h2>
         <button @click="emit('close')" class="close-btn">&times;</button>
@@ -95,90 +88,83 @@ function formatTime(datetime) {
           {{ error }}
         </div>
 
-        <div v-if="loading" class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading...</p>
+        <!-- Project Selection -->
+        <div class="form-group">
+          <label>Project (optional)</label>
+          <div class="project-select">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search projects or leave empty for no project..."
+              class="search-input"
+              :disabled="projectsLoading"
+            />
+
+            <!-- Loading State -->
+            <div v-if="projectsLoading" class="dropdown">
+              <div class="loading-state">Loading projects...</div>
+            </div>
+
+            <!-- Search Results / Initial Projects -->
+            <div v-else-if="searchQuery || !selectedProject" class="dropdown">
+              <div v-if="filteredProjects.length === 0" class="no-results">
+                No projects found
+              </div>
+              <button
+                v-else
+                v-for="project in filteredProjects"
+                :key="project.id"
+                type="button"
+                @click="selectProject(project.id)"
+                class="project-option"
+              >
+                <span class="color-indicator" :style="{ backgroundColor: project.color }"></span>
+                <span>{{ project.name }}</span>
+                <span class="duration-hint">{{ project.default_duration }}m</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Selected Project Display -->
+          <div v-if="selectedProject" class="selected-project">
+            <span class="color-indicator" :style="{ backgroundColor: selectedProject.color }"></span>
+            <span>{{ selectedProject.name }}</span>
+            <button type="button" @click="selectedProjectId = null" class="clear-btn">×</button>
+          </div>
         </div>
 
-        <div v-else>
-          <!-- Today's Planning -->
-          <div v-if="todayPlanning.length > 0" class="section">
-            <h3 class="section-title">Today's Planning</h3>
-            <div class="planning-grid">
-              <button
-                v-for="plan in todayPlanning"
-                :key="plan.id"
-                @click="selectPlanning(plan)"
-                :class="['planning-card', { selected: selectedPlanning?.id === plan.id }]"
-                type="button"
-              >
-                <div class="planning-time">{{ formatTime(plan.scheduled_start) }}</div>
-                <div class="planning-project" :style="{ color: plan.project.color }">
-                  {{ plan.project.name }}
-                </div>
-                <div v-if="plan.description" class="planning-description">
-                  {{ plan.description }}
-                </div>
-                <div class="planning-duration">{{ Math.floor((new Date(plan.scheduled_end) - new Date(plan.scheduled_start)) / 1000 / 60) }} min</div>
-              </button>
+        <!-- Duration -->
+        <div class="form-group">
+          <label>Duration</label>
+          <div class="duration-controls">
+            <input
+              type="number"
+              v-model.number="duration"
+              min="5"
+              step="5"
+              class="duration-input"
+            />
+            <span class="duration-label">minutes</span>
+
+            <!-- Quick Buttons -->
+            <div class="quick-buttons">
+              <button type="button" @click="duration = 30" class="quick-btn">30m</button>
+              <button type="button" @click="duration = 60" class="quick-btn">1h</button>
+              <button type="button" @click="duration = 90" class="quick-btn">1.5h</button>
+              <button type="button" @click="duration = 120" class="quick-btn">2h</button>
             </div>
           </div>
 
-          <!-- Pinned Projects -->
-          <div v-if="pinnedProjects.length > 0" class="section">
-            <h3 class="section-title">Pinned Projects</h3>
-            <div class="projects-grid">
-              <button
-                v-for="project in pinnedProjects"
-                :key="project.id"
-                @click="selectProject(project)"
-                :class="['project-card', { selected: selectedProject?.id === project.id && mode === 'project' }]"
-                type="button"
-              >
-                <div class="color-indicator" :style="{ backgroundColor: project.color }"></div>
-                <div class="project-name">{{ project.name }}</div>
-                <div class="project-duration">{{ project.default_duration }} min</div>
-              </button>
-            </div>
+          <!-- End Time Display -->
+          <div v-if="endTime" class="end-time-hint">
+            Session will end at approximately <strong>{{ endTime }}</strong>
           </div>
+        </div>
 
-          <!-- All Projects -->
-          <div v-if="activeProjects.length > 0" class="section">
-            <h3 class="section-title">All Projects</h3>
-            <div class="projects-list">
-              <button
-                v-for="project in activeProjects"
-                :key="project.id"
-                @click="selectProject(project)"
-                :class="['project-list-item', { selected: selectedProject?.id === project.id && mode === 'project' }]"
-                type="button"
-              >
-                <div class="color-indicator" :style="{ backgroundColor: project.color }"></div>
-                <span>{{ project.name }}</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Duration Setting -->
-          <div v-if="selectedProject || selectedPlanning" class="section">
-            <h3 class="section-title">Duration</h3>
-            <div class="duration-controls">
-              <input
-                type="number"
-                v-model.number="duration"
-                min="5"
-                step="5"
-                class="duration-input"
-              />
-              <span class="duration-label">minutes</span>
-              <div class="quick-buttons">
-                <button type="button" @click="duration = 30" class="quick-btn">30m</button>
-                <button type="button" @click="duration = 60" class="quick-btn">1h</button>
-                <button type="button" @click="duration = 90" class="quick-btn">1.5h</button>
-                <button type="button" @click="duration = 120" class="quick-btn">2h</button>
-              </div>
-            </div>
-          </div>
+        <!-- Tags -->
+        <div class="form-group">
+          <label>Tags (optional)</label>
+          <TagMultiSelect v-model="selectedTags" />
         </div>
       </div>
 
@@ -187,7 +173,7 @@ function formatTime(datetime) {
         <button @click="emit('close')" class="btn btn-secondary">Cancel</button>
         <button
           @click="handleStart"
-          :disabled="(!selectedProject && !selectedPlanning) || loading"
+          :disabled="!duration || loading"
           class="btn btn-primary"
         >
           {{ loading ? 'Starting...' : 'Start Session' }}
@@ -215,15 +201,11 @@ function formatTime(datetime) {
   background: white;
   border-radius: 8px;
   width: 90%;
-  max-width: 700px;
+  max-width: 500px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.modal-content.large {
-  max-width: 800px;
 }
 
 .modal-header {
@@ -277,180 +259,116 @@ function formatTime(datetime) {
   font-size: 0.9rem;
 }
 
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  color: #6b7280;
+.form-group {
+  margin-bottom: 1.5rem;
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f4f6;
-  border-top-color: #10b981;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.section {
-  margin-bottom: 2rem;
-}
-
-.section-title {
-  font-size: 1.125rem;
+.form-group label {
+  display: block;
   font-weight: 600;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
   color: #374151;
 }
 
-.planning-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 0.75rem;
-}
-
-.planning-card {
-  padding: 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 6px;
-  cursor: pointer;
-  text-align: left;
-  background: white;
-  transition: all 0.2s;
-}
-
-.planning-card:hover {
-  border-color: #10b981;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
-}
-
-.planning-card.selected {
-  border-color: #10b981;
-  background-color: #ecfdf5;
-}
-
-.planning-time {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
-}
-
-.planning-project {
-  font-weight: 700;
-  margin-bottom: 0.25rem;
-}
-
-.planning-description {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.planning-duration {
-  font-size: 0.75rem;
-  color: #9ca3af;
-}
-
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 0.75rem;
-}
-
-.project-card {
-  padding: 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 6px;
-  cursor: pointer;
-  text-align: left;
-  background: white;
-  transition: all 0.2s;
+.project-select {
   position: relative;
 }
 
-.project-card:hover {
-  border-color: #10b981;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+.search-input {
+  width: 100%;
+  padding: 0.625rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
-.project-card.selected {
+.search-input:focus {
   border-color: #10b981;
-  background-color: #ecfdf5;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0.25rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.project-option {
+  width: 100%;
+  padding: 0.625rem;
+  border: none;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+
+.project-option:hover {
+  background-color: #f3f4f6;
 }
 
 .color-indicator {
   width: 4px;
-  height: 100%;
-  position: absolute;
-  left: 0;
-  top: 0;
-  border-radius: 6px 0 0 6px;
-}
-
-.project-name {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-  padding-left: 0.5rem;
-}
-
-.project-duration {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  padding-left: 0.5rem;
-}
-
-.projects-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.project-list-item {
-  padding: 0.75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: left;
-  background: white;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  position: relative;
-}
-
-.project-list-item:hover {
-  border-color: #10b981;
-  background-color: #f9fafb;
-}
-
-.project-list-item.selected {
-  border-color: #10b981;
-  background-color: #ecfdf5;
-}
-
-.project-list-item .color-indicator {
-  position: static;
-  width: 4px;
   height: 24px;
   border-radius: 2px;
   flex-shrink: 0;
+}
+
+.duration-hint {
+  margin-left: auto;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.loading-state,
+.no-results {
+  padding: 1rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.search-input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.selected-project {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.clear-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+.clear-btn:hover {
+  color: #374151;
 }
 
 .duration-controls {
@@ -479,7 +397,7 @@ function formatTime(datetime) {
 }
 
 .quick-btn {
-  padding: 0.5rem 0.75rem;
+  padding: 0.375rem 0.75rem;
   background-color: #f3f4f6;
   border: 1px solid #d1d5db;
   border-radius: 4px;
@@ -490,6 +408,17 @@ function formatTime(datetime) {
 
 .quick-btn:hover {
   background-color: #e5e7eb;
+  border-color: #10b981;
+}
+
+.end-time-hint {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #ecfdf5;
+  border: 1px solid #10b981;
+  border-radius: 4px;
+  color: #047857;
+  font-size: 0.875rem;
 }
 
 .btn {

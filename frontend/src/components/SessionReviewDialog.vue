@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useSessionStore } from '@/stores/sessions'
-import TagSelector from '@/components/TagSelector.vue'
+import TagMultiSelect from '@/components/TagMultiSelect.vue'
 
 const props = defineProps({
   session: {
@@ -15,8 +15,8 @@ const emit = defineEmits(['close', 'saved'])
 const sessionStore = useSessionStore()
 
 const formData = ref({
-  satisfaction_score: 80,
-  tasks_done: '',
+  satisfaction_score: props.session.satisfaction_score || 80,
+  tasks_done: props.session.tasks_done || '',
   notes: props.session.notes || '',
   tag_ids: props.session.tags?.map((t) => t.id) || [],
 })
@@ -143,7 +143,7 @@ function formatDuration(minutes) {
 
           <div class="form-group">
             <label class="form-label">Tags</label>
-            <TagSelector :project-id="session.project_id" v-model="formData.tag_ids" />
+            <TagMultiSelect v-model="formData.tag_ids" />
           </div>
 
           <div class="form-actions">

@@ -1,12 +1,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useProjectStore } from '@/stores/projects'
+import { useSessionStore } from '@/stores/sessions'
 import ProjectForm from '@/components/ProjectForm.vue'
 import ProjectTree from '@/components/ProjectTree.vue'
 
 const projectStore = useProjectStore()
+const sessionStore = useSessionStore()
 const showForm = ref(false)
 const editingProject = ref(null)
+const parentProjectForNew = ref(null)
 const showArchived = ref(false)
 
 const projects = computed(() =>
@@ -27,12 +30,41 @@ async function loadProjects() {
 
 function openCreateForm() {
   editingProject.value = null
+  parentProjectForNew.value = null
   showForm.value = true
 }
 
 function openEditForm(project) {
   editingProject.value = project
+  parentProjectForNew.value = null
   showForm.value = true
+}
+
+function openCreateChildForm(project) {
+  editingProject.value = null
+  parentProjectForNew.value = project
+  showForm.value = true
+}
+
+async function handleStartSession(project) {
+  // Check if there's an active session
+  const activeSession = sessionStore.activeSession
+  if (activeSession) {
+    alert('You already have an active session. Please stop it before starting a new one.')
+    return
+  }
+
+  // Start session with project
+  try {
+    await sessionStore.startSession({
+      project_id: project.id,
+      planned_duration: project.default_duration || 60,
+      tag_ids: []
+    })
+    alert(`Session started for "${project.name}"`)
+  } catch (error) {
+    alert('Failed to start session: ' + (error.response?.data?.detail || error.message))
+  }
 }
 
 async function handleDelete(project) {
@@ -105,11 +137,14 @@ function handleFormSaved() {
       @delete="handleDelete"
       @toggle-archive="handleToggleArchive"
       @toggle-pin="handleTogglePin"
+      @add-child="openCreateChildForm"
+      @start-session="handleStartSession"
     />
 
     <ProjectForm
       v-if="showForm"
       :project="editingProject"
+      :parent-project="parentProjectForNew"
       @close="showForm = false"
       @saved="handleFormSaved"
     />

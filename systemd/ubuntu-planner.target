@@ -1,0 +1,6 @@
+[Unit]
+Description=Ubuntu Planner Application Suite
+Wants=ubuntu-planner-backend.service ubuntu-planner-frontend.service ubuntu-planner-tray.service
+
+[Install]
+WantedBy=default.target

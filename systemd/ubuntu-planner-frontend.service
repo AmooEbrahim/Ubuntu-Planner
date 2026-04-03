@@ -1,0 +1,17 @@
+[Unit]
+Description=Ubuntu Planner Frontend (Vite Dev Server)
+After=ubuntu-planner-backend.service
+Wants=ubuntu-planner-backend.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ebrhaim/bin/bash/Ubuntu-Planner/frontend
+Environment="PATH=/home/ebrhaim/.nvm/versions/node/v22.14.0/bin:/usr/bin:/bin"
+Environment="NODE_PATH=/home/ebrhaim/.nvm/versions/node/v22.14.0/lib/node_modules"
+EnvironmentFile=/home/ebrhaim/bin/bash/Ubuntu-Planner/.env
+ExecStart=/home/ebrhaim/.nvm/versions/node/v22.14.0/bin/npm run dev
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

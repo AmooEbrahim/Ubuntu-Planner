@@ -170,14 +170,19 @@ async function handleDeleteSession(session) {
         <h1 class="page-title">Sessions</h1>
         <p class="page-subtitle">Track and review your work sessions</p>
       </div>
-      <button
-        @click="openStartDialog"
-        :disabled="activeSession !== null"
-        class="btn-primary"
-        :title="activeSession ? 'A session is already active' : 'Start a new session'"
-      >
-        {{ activeSession ? 'Session Active' : '+ Start Session' }}
-      </button>
+      <div class="header-actions">
+        <router-link to="/sessions" class="btn-secondary">
+          Daily View
+        </router-link>
+        <button
+          @click="openStartDialog"
+          :disabled="activeSession !== null"
+          class="btn-primary"
+          :title="activeSession ? 'A session is already active' : 'Start a new session'"
+        >
+          {{ activeSession ? 'Session Active' : '+ Start Session' }}
+        </button>
+      </div>
     </div>
 
     <div v-if="error" class="error-banner">
@@ -389,6 +394,31 @@ async function handleDeleteSession(session) {
 .page-subtitle {
   color: #6b7280;
   margin: 0.25rem 0 0 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  font-size: 1rem;
+  display: inline-block;
+}
+
+.btn-secondary:hover {
+  background-color: #e5e7eb;
+  border-color: #10b981;
 }
 
 .btn-primary {

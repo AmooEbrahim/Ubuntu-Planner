@@ -6,7 +6,7 @@ const props = defineProps({
   projects: Array
 })
 
-const emit = defineEmits(['edit', 'delete', 'toggle-archive', 'toggle-pin'])
+const emit = defineEmits(['edit', 'delete', 'toggle-archive', 'toggle-pin', 'add-child', 'start-session'])
 </script>
 
 <template>
@@ -24,6 +24,8 @@ const emit = defineEmits(['edit', 'delete', 'toggle-archive', 'toggle-pin'])
         @delete="emit('delete', $event)"
         @toggle-archive="emit('toggle-archive', $event)"
         @toggle-pin="emit('toggle-pin', $event)"
+        @add-child="emit('add-child', $event)"
+        @start-session="emit('start-session', $event)"
       />
     </div>
   </div>

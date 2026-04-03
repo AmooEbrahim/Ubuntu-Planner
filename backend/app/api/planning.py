@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.core.database import get_db
 from app.services.planning_service import PlanningService
 
@@ -19,8 +19,7 @@ class TagResponse(BaseModel):
     name: str
     color: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectResponse(BaseModel):
@@ -30,8 +29,7 @@ class ProjectResponse(BaseModel):
     name: str
     color: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlanningCreate(BaseModel):
@@ -70,8 +68,7 @@ class PlanningResponse(BaseModel):
     project: ProjectResponse
     tags: List[TagResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Dependency
