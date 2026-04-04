@@ -15,11 +15,25 @@ const editingPlanning = ref(null)
 const defaultStartTime = ref(null)
 const loading = ref(false)
 const error = ref('')
+const dragSaving = ref(false)
 
 const displayDate = computed(() => currentDate.value.format('MMMM D, YYYY'))
 const isToday = computed(() => currentDate.value.isSame(dayjs(), 'day'))
+const dayName = computed(() => currentDate.value.format('dddd'))
 
 const planning = computed(() => planningStore.planningByDate(currentDate.value))
+
+const totalDuration = computed(() => {
+  const minutes = planning.value.reduce((sum, p) => {
+    const start = dayjs.utc(p.scheduled_start).local()
+    const end = dayjs.utc(p.scheduled_end).local()
+    return sum + end.diff(start, 'minute')
+  }, 0)
+  if (minutes < 60) return `${minutes}m`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+})
 
 onMounted(async () => {
   await loadData()
@@ -39,12 +53,7 @@ async function loadData() {
 }
 
 async function loadPlanning() {
-  try {
-    await planningStore.fetchPlanningForDate(currentDate.value)
-  } catch (err) {
-    console.error('Error loading planning:', err)
-    throw err
-  }
+  await planningStore.fetchPlanningForDate(currentDate.value)
 }
 
 async function loadProjects() {
@@ -74,19 +83,33 @@ function openCreateForm(timeSlot = null) {
   showForm.value = true
 }
 
-function openEditForm(planning) {
-  editingPlanning.value = planning
+function openEditForm(item) {
+  editingPlanning.value = item
   defaultStartTime.value = null
   showForm.value = true
 }
 
-async function handleDelete(planning) {
-  if (confirm(`Delete planning for "${planning.project.name}"?`)) {
+async function handleDelete(item) {
+  if (confirm(`Delete planning for "${item.project?.name}"?`)) {
     try {
-      await planningStore.deletePlanning(planning.id)
+      await planningStore.deletePlanning(item.id)
     } catch (err) {
       alert('Failed to delete planning: ' + (err.response?.data?.detail || err.message))
     }
+  }
+}
+
+async function handleDragEnd(data) {
+  dragSaving.value = true
+  try {
+    await planningStore.updatePlanning(data.id, {
+      scheduled_start: data.scheduled_start,
+      scheduled_end: data.scheduled_end,
+    })
+  } catch (err) {
+    alert('Failed to move planning: ' + (err.response?.data?.detail || err.message))
+  } finally {
+    dragSaving.value = false
   }
 }
 
@@ -109,32 +132,67 @@ function closeForm() {
         <h1 class="page-title">Planning Calendar</h1>
         <p class="page-subtitle">Schedule and manage your work</p>
       </div>
-      <button @click="openCreateForm()" class="btn-primary">+ Add Planning</button>
+      <button @click="openCreateForm()" class="btn-primary">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Add Planning
+      </button>
     </div>
 
     <div v-if="error" class="error-banner">
-      {{ error }}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <span>{{ error }}</span>
       <button @click="loadData" class="retry-btn">Retry</button>
     </div>
 
     <div class="calendar-controls">
       <div class="date-navigation">
-        <button @click="previousDay" class="nav-btn" title="Previous Day">←</button>
+        <button @click="previousDay" class="nav-btn" title="Previous Day">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
         <button @click="goToToday" class="today-btn" :disabled="isToday">Today</button>
-        <button @click="nextDay" class="nav-btn" title="Next Day">→</button>
+        <button @click="nextDay" class="nav-btn" title="Next Day">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
       </div>
+
       <div class="current-date">
-        {{ displayDate }}
+        <span class="date-day">{{ dayName }}</span>
+        <span class="date-full">{{ displayDate }}</span>
         <span v-if="isToday" class="today-badge">Today</span>
       </div>
+
       <div class="stats">
-        <span class="stat-item">{{ planning.length }} planning(s)</span>
+        <div class="stat-item">
+          <span class="stat-count">{{ planning.length }}</span>
+          <span class="stat-label">plans</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-count">{{ totalDuration }}</span>
+          <span class="stat-label">total</span>
+        </div>
       </div>
     </div>
 
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
       <p>Loading planning...</p>
+    </div>
+
+    <div v-else-if="dragSaving" class="drag-save-indicator">
+      <div class="mini-spinner"></div>
+      <span>Moving plan...</span>
     </div>
 
     <div v-else class="calendar-wrapper">
@@ -144,6 +202,7 @@ function closeForm() {
         @click-slot="openCreateForm"
         @edit="openEditForm"
         @delete="handleDelete"
+        @drag-end="handleDragEnd"
       />
     </div>
 
@@ -163,51 +222,84 @@ function closeForm() {
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
 }
 
 .page-title {
   font-size: 2rem;
   font-weight: 700;
-  color: #111827;
+  color: #0f172a;
   margin: 0;
+  letter-spacing: -0.025em;
 }
 
 .page-subtitle {
-  color: #6b7280;
+  color: #64748b;
   margin: 0.25rem 0 0 0;
+  font-size: 0.95rem;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
 }
 
 .error-banner {
-  background-color: #fee2e2;
-  border: 1px solid #ef4444;
-  color: #b91c1c;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
 }
 
 .retry-btn {
-  background-color: white;
-  border: 1px solid #b91c1c;
-  color: #b91c1c;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
+  margin-left: auto;
+  padding: 0.375rem 0.75rem;
+  background: white;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 0.8rem;
   font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
 }
 
 .retry-btn:hover {
-  background-color: #fef2f2;
+  background: #fef2f2;
 }
 
 .calendar-controls {
@@ -215,77 +307,120 @@ function closeForm() {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
-  padding: 1rem;
+  padding: 1rem 1.25rem;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .date-navigation {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 
-.nav-btn,
+.nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #64748b;
+  transition: all var(--transition);
+}
+
+.nav-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
 .today-btn {
   padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid #e2e8f0;
   background: white;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.2s;
-}
-
-.nav-btn:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.today-btn {
-  background-color: #10b981;
-  color: white;
-  border-color: #10b981;
+  font-size: 0.85rem;
+  color: #6366f1;
+  transition: all var(--transition);
 }
 
 .today-btn:hover:not(:disabled) {
-  background-color: #059669;
+  background: #eef2ff;
+  border-color: #6366f1;
 }
 
 .today-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .current-date {
-  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.date-day {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6366f1;
+}
+
+.date-full {
+  font-size: 1.1rem;
   font-weight: 700;
-  color: #111827;
+  color: #0f172a;
+}
+
+.today-badge {
+  background: #ecfdf5;
+  color: #059669;
+  padding: 0.2rem 0.625rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stats {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.today-badge {
-  background-color: #10b981;
-  color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.stats {
-  display: flex;
-  gap: 1rem;
-}
-
 .stat-item {
-  font-size: 0.9rem;
-  color: #6b7280;
-  background-color: #f3f4f6;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.stat-count {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 28px;
+  background: #e2e8f0;
 }
 
 .loading-state {
@@ -294,44 +429,77 @@ function closeForm() {
   align-items: center;
   justify-content: center;
   padding: 4rem 2rem;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f4f6;
-  border-top-color: #10b981;
+  border: 3px solid #e2e8f0;
+  border-top-color: #6366f1;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
   margin-bottom: 1rem;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
+}
+
+.drag-save-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  color: #6366f1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+
+.mini-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #c7d2fe;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
 .calendar-wrapper {
   margin-bottom: 2rem;
 }
 
-.btn-primary {
-  padding: 0.75rem 1.5rem;
-  background-color: #10b981;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 1rem;
-}
+@media (max-width: 768px) {
+  .planning-page {
+    padding: 1rem;
+  }
 
-.btn-primary:hover {
-  background-color: #059669;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .calendar-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .date-navigation {
+    justify-content: center;
+  }
+
+  .current-date {
+    justify-content: center;
+  }
+
+  .stats {
+    justify-content: center;
+  }
 }
 </style>

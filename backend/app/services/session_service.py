@@ -234,6 +234,9 @@ class SessionService:
             tags = self.db.query(Tag).filter(Tag.id.in_(tag_ids)).all()
             session.tags = tags
 
+        # Skip computed/read-only fields
+        update_data.pop("actual_duration", None)
+
         # Update other fields
         for key, value in update_data.items():
             if hasattr(session, key) and value is not None:

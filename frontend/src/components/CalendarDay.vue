@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 
@@ -16,139 +16,292 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['click-slot', 'edit', 'delete'])
+const emit = defineEmits(['click-slot', 'edit', 'delete', 'drag-end'])
 
-// Generate hours from 0 to 23
 const hours = Array.from({ length: 24 }, (_, i) => i)
+const draggingId = ref(null)
+const draggingItem = ref(null)
+const dragMouseY = ref(0)
+const dragSnappedMinutes = ref(0)
+const planningAreaRef = ref(null)
 
-// Helper to get planning items for a specific hour
-function getPlanningForHour(hour) {
-  return props.planning.filter((p) => {
-    const startHour = dayjs.utc(p.scheduled_start).local().hour()
-    const endHour = dayjs.utc(p.scheduled_end).local().hour()
-    const endMinute = dayjs.utc(p.scheduled_end).local().minute()
+const pxPerMinute = 1
 
-    // Include if planning starts in this hour or spans across it
-    return (
-      startHour === hour ||
-      (startHour < hour && (endHour > hour || (endHour === hour && endMinute > 0)))
-    )
-  })
-}
+function getPlanningStyle(item) {
+  const start = dayjs.utc(item.scheduled_start).local()
+  const end = dayjs.utc(item.scheduled_end).local()
 
-// Calculate position and height for planning item
-function getPlanningStyle(planning) {
-  const start = dayjs.utc(planning.scheduled_start).local()
-  const end = dayjs.utc(planning.scheduled_end).local()
-
-  const startHour = start.hour()
-  const startMinute = start.minute()
-  const endHour = end.hour()
-  const endMinute = end.minute()
-
-  // Calculate position as percentage from start of day
-  const topPercent = ((startHour * 60 + startMinute) / (24 * 60)) * 100
-
-  // Calculate height as percentage of day
+  const startMinutes = start.hour() * 60 + start.minute()
   const durationMinutes = end.diff(start, 'minute')
-  const heightPercent = (durationMinutes / (24 * 60)) * 100
+
+  const topPx = startMinutes * pxPerMinute
+  const heightPx = Math.max(28, durationMinutes * pxPerMinute)
 
   return {
-    top: `${topPercent}%`,
-    height: `${heightPercent}%`,
-    minHeight: '30px', // Ensure minimum visibility
+    top: `${topPx}px`,
+    height: `${heightPx}px`,
   }
 }
 
-// Get priority color
-function getPriorityColor(priority) {
-  switch (priority) {
-    case 'low':
-      return '#6b7280'
-    case 'medium':
-      return '#3b82f6'
+function getProjectColor(item) {
+  return item.project?.color || '#6366f1'
+}
+
+function getPriorityIndicator(item) {
+  switch (item.priority) {
     case 'critical':
-      return '#ef4444'
+      return { color: '#ef4444', icon: '!!' }
+    case 'medium':
+      return { color: '#3b82f6', icon: '!' }
     default:
-      return '#3b82f6'
+      return { color: '#94a3b8', icon: '' }
   }
 }
 
-// Format time
-function formatTime(datetime) {
-  return dayjs.utc(datetime).local().format('HH:mm')
+function formatTimeShort(datetime) {
+  return dayjs.utc(datetime).local().format('h:mm A')
 }
 
-// Handle hour click to create planning
 function handleHourClick(hour) {
   const startTime = `${String(hour).padStart(2, '0')}:00`
   emit('click-slot', startTime)
 }
 
-// Calculate if planning should be displayed in this hour slot
-function shouldDisplayInHour(planning, hour) {
-  const startHour = dayjs.utc(planning.scheduled_start).local().hour()
-  return startHour === hour
+function handleDragStart(event, item) {
+  draggingId.value = item.id
+  draggingItem.value = item
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', item.id)
+
+  const ghost = event.target
+  ghost.style.opacity = '0.4'
+  setTimeout(() => {
+    if (ghost) ghost.style.opacity = ''
+  }, 0)
+}
+
+function handleDragOver(event) {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'move'
+
+  if (!draggingItem.value || !planningAreaRef.value) return
+
+  const rect = planningAreaRef.value.getBoundingClientRect()
+  const scrollTop = planningAreaRef.value.scrollTop
+  const y = event.clientY - rect.top + scrollTop
+
+  dragMouseY.value = event.clientY
+
+  const snappedMinutes = Math.round(y / pxPerMinute / 15) * 15
+  dragSnappedMinutes.value = Math.max(0, Math.min(23 * 60 + 45, snappedMinutes))
+}
+
+function handleDrop(event) {
+  event.preventDefault()
+  if (!draggingId.value || !draggingItem.value) return
+
+  const item = draggingItem.value
+  const duration = dayjs.utc(item.scheduled_end).local().diff(dayjs.utc(item.scheduled_start).local(), 'minute')
+
+  const newStartMinutes = dragSnappedMinutes.value
+  const baseDate = dayjs().startOf('day')
+  const newStart = baseDate.hour(Math.floor(newStartMinutes / 60)).minute(newStartMinutes % 60).second(0)
+  const newEnd = newStart.add(duration, 'minute')
+
+  emit('drag-end', {
+    id: item.id,
+    scheduled_start: newStart.toISOString(),
+    scheduled_end: newEnd.toISOString(),
+  })
+
+  resetDrag()
+}
+
+function handleDragEnd() {
+  resetDrag()
+}
+
+function resetDrag() {
+  draggingId.value = null
+  draggingItem.value = null
+  dragMouseY.value = 0
+  dragSnappedMinutes.value = 0
+}
+
+function getGhostBlockStyle() {
+  const item = draggingItem.value
+  if (!item) return {}
+
+  const start = dayjs.utc(item.scheduled_start).local()
+  const end = dayjs.utc(item.scheduled_end).local()
+  const duration = end.diff(start, 'minute')
+
+  const topPx = dragSnappedMinutes.value * pxPerMinute
+  const heightPx = Math.max(28, duration * pxPerMinute)
+  const color = getProjectColor(item)
+
+  return {
+    top: `${Math.max(0, topPx)}px`,
+    height: `${heightPx}px`,
+    backgroundColor: color + '35',
+    borderLeftColor: color,
+  }
+}
+
+function getGhostTime() {
+  if (!draggingItem.value) return ''
+  const baseDate = dayjs().startOf('day')
+  const start = baseDate.hour(Math.floor(dragSnappedMinutes.value / 60)).minute(dragSnappedMinutes.value % 60)
+  const duration = dayjs.utc(draggingItem.value.scheduled_end).local().diff(dayjs.utc(draggingItem.value.scheduled_start).local(), 'minute')
+  const end = start.add(duration, 'minute')
+  return `${start.format('h:mm A')} – ${end.format('h:mm A')}`
+}
+
+function getGhostLineTop() {
+  return dragSnappedMinutes.value * pxPerMinute
+}
+
+function getHourLabel(hour) {
+  if (hour === 0) return '12 AM'
+  if (hour < 12) return `${hour} AM`
+  if (hour === 12) return '12 PM'
+  return `${hour - 12} PM`
 }
 </script>
 
 <template>
   <div class="calendar-day">
-    <div class="timeline">
+    <div class="timeline-wrapper">
       <div class="time-labels">
-        <div v-for="hour in hours" :key="hour" class="time-label">
-          {{ String(hour).padStart(2, '0') }}:00
-        </div>
-      </div>
-
-      <div class="planning-container">
         <div
           v-for="hour in hours"
           :key="hour"
-          class="hour-slot"
-          @click="handleHourClick(hour)"
-        ></div>
+          class="time-label"
+          :style="{ top: `${hour * 60}px` }"
+        >
+          {{ getHourLabel(hour) }}
+        </div>
+      </div>
 
-        <!-- Planning items positioned absolutely -->
+      <div
+        ref="planningAreaRef"
+        class="planning-area"
+        :style="{ minHeight: `${24 * 60}px` }"
+        :class="{ 'is-drag-active': draggingId }"
+        @dragover="handleDragOver"
+        @drop="handleDrop"
+      >
+        <div
+          v-for="hour in hours"
+          :key="hour"
+          class="hour-line"
+          :style="{ top: `${hour * 60}px` }"
+          @click="handleHourClick(hour)"
+        >
+          <div class="hour-line-inner"></div>
+        </div>
+
         <div
           v-for="item in planning"
           :key="item.id"
-          class="planning-item"
+          class="planning-block"
+          :class="{ 'is-dragging': draggingId === item.id }"
           :style="{
             ...getPlanningStyle(item),
-            borderColor: getPriorityColor(item.priority),
-            backgroundColor: getPriorityColor(item.priority) + '20',
+            backgroundColor: getProjectColor(item) + '22',
+            borderLeftColor: getProjectColor(item),
           }"
-          @click.stop
+          draggable="true"
+          @dragstart="handleDragStart($event, item)"
+          @dragend="handleDragEnd"
+          @click.stop="emit('edit', item)"
         >
-          <div class="planning-header" :style="{ borderColor: getPriorityColor(item.priority) }">
-            <span class="planning-time">
-              {{ formatTime(item.scheduled_start) }} - {{ formatTime(item.scheduled_end) }}
-            </span>
-            <div class="planning-actions">
-              <button @click="emit('edit', item)" class="action-btn edit-btn" title="Edit">✎</button>
-              <button @click="emit('delete', item)" class="action-btn delete-btn" title="Delete">
-                ×
-              </button>
+          <div class="block-accent" :style="{ backgroundColor: getProjectColor(item) }"></div>
+
+          <div class="block-content">
+            <div class="block-top-row">
+              <span class="block-project" :style="{ color: getProjectColor(item) }">
+                {{ item.project?.name || 'Unknown' }}
+              </span>
+              <div
+                v-if="getPriorityIndicator(item).icon"
+                class="priority-dot"
+                :style="{ backgroundColor: getPriorityIndicator(item).color }"
+                :title="item.priority"
+              >
+                {{ getPriorityIndicator(item).icon }}
+              </div>
             </div>
-          </div>
-          <div class="planning-content">
-            <div class="planning-project" :style="{ color: item.project.color }">
-              {{ item.project.name }}
+
+            <div class="block-time">
+              {{ formatTimeShort(item.scheduled_start) }} – {{ formatTimeShort(item.scheduled_end) }}
             </div>
-            <div v-if="item.description" class="planning-description">
+
+            <div v-if="item.description" class="block-desc">
               {{ item.description }}
             </div>
-            <div v-if="item.tags && item.tags.length > 0" class="planning-tags">
+
+            <div v-if="item.tags && item.tags.length > 0" class="block-tags">
               <span
                 v-for="tag in item.tags"
                 :key="tag.id"
-                class="tag"
-                :style="{ backgroundColor: tag.color }"
+                class="block-tag"
+                :style="{ backgroundColor: tag.color + '20', color: tag.color }"
               >
                 {{ tag.name }}
               </span>
             </div>
+          </div>
+
+          <div class="block-actions">
+            <button
+              type="button"
+              class="block-action-btn edit"
+              @click.stop="emit('edit', item)"
+              title="Edit"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="block-action-btn delete"
+              @click.stop="emit('delete', item)"
+              title="Delete"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div
+          v-if="draggingId && draggingItem"
+          class="ghost-block"
+          :style="getGhostBlockStyle()"
+        >
+          <div class="ghost-accent" :style="{ backgroundColor: getProjectColor(draggingItem) }"></div>
+          <div class="ghost-content">
+            <span class="ghost-project" :style="{ color: getProjectColor(draggingItem) }">
+              {{ draggingItem.project?.name || 'Unknown' }}
+            </span>
+            <span class="ghost-time">{{ getGhostTime() }}</span>
+          </div>
+        </div>
+
+        <div
+          v-if="draggingId"
+          class="drag-drop-line"
+          :style="{ top: `${getGhostLineTop()}px` }"
+        >
+          <div class="drop-line-dot"></div>
+          <div class="drop-line"></div>
+          <div class="drop-line-label" v-if="draggingItem">
+            {{ getGhostTime() }}
           </div>
         </div>
       </div>
@@ -159,159 +312,327 @@ function shouldDisplayInHour(planning, hour) {
 <style scoped>
 .calendar-day {
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
   overflow: hidden;
 }
 
-.timeline {
+.timeline-wrapper {
   display: flex;
   position: relative;
 }
 
 .time-labels {
-  width: 80px;
+  width: 70px;
   flex-shrink: 0;
-  border-right: 2px solid #e5e7eb;
+  position: relative;
+  border-right: 1px solid #e2e8f0;
+  background: #fafbfc;
 }
 
 .time-label {
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85rem;
-  color: #6b7280;
-  border-bottom: 1px solid #f3f4f6;
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #94a3b8;
+  transform: translateY(-8px);
+  padding: 0 0.5rem;
 }
 
-.planning-container {
+.planning-area {
   flex: 1;
   position: relative;
-  min-height: calc(24 * 60px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 800px;
 }
 
-.hour-slot {
-  height: 60px;
-  border-bottom: 1px solid #f3f4f6;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.planning-area.is-drag-active {
+  background: rgba(99, 102, 241, 0.02);
 }
 
-.hour-slot:hover {
-  background-color: #f9fafb;
-}
-
-.planning-item {
+.hour-line {
   position: absolute;
-  left: 8px;
-  right: 8px;
-  border-left: 4px solid;
-  border-radius: 4px;
-  padding: 8px;
+  left: 0;
+  right: 0;
+  height: 60px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.15s ease;
+}
+
+.hour-line:hover {
+  background: rgba(99, 102, 241, 0.03);
+}
+
+.planning-area.is-drag-active .hour-line:hover {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.hour-line-inner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.planning-block {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  border-left: 3px solid;
+  border-radius: 8px;
   overflow: hidden;
+  cursor: grab;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  z-index: 10;
+}
+
+.planning-block:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+}
+
+.planning-block:active {
+  cursor: grabbing;
+}
+
+.planning-block.is-dragging {
+  opacity: 0.3;
+  transform: scale(0.98);
+  border-style: dashed;
+}
+
+.block-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  border-radius: 8px 0 0 8px;
+}
+
+.block-content {
+  padding: 6px 8px 6px 10px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  gap: 2px;
+  overflow: hidden;
+  height: 100%;
 }
 
-.planning-item:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
-  transform: translateX(2px);
-}
-
-.planning-header {
+.block-top-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid;
-  border-color: inherit;
-}
-
-.planning-time {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #374151;
-}
-
-.planning-actions {
-  display: flex;
   gap: 4px;
-  opacity: 0;
-  transition: opacity 0.2s;
 }
 
-.planning-item:hover .planning-actions {
-  opacity: 1;
+.block-project {
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
-.action-btn {
-  background: white;
-  border: 1px solid #d1d5db;
-  border-radius: 3px;
-  cursor: pointer;
-  width: 20px;
-  height: 20px;
+.priority-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
-  transition: all 0.2s;
-}
-
-.edit-btn:hover {
-  background-color: #3b82f6;
+  font-size: 0.55rem;
+  font-weight: 800;
   color: white;
-  border-color: #3b82f6;
+  flex-shrink: 0;
 }
 
-.delete-btn:hover {
-  background-color: #ef4444;
-  color: white;
-  border-color: #ef4444;
-}
-
-.planning-content {
-  flex: 1;
-  overflow: hidden;
-}
-
-.planning-project {
-  font-weight: 700;
-  font-size: 0.9rem;
-  margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.block-time {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-weight: 500;
   white-space: nowrap;
 }
 
-.planning-description {
-  font-size: 0.8rem;
-  color: #6b7280;
-  margin-bottom: 4px;
+.block-desc {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
 }
 
-.planning-tags {
+.block-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
+  gap: 3px;
+  margin-top: 2px;
 }
 
-.tag {
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 3px;
+.block-tag {
+  font-size: 0.6rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.block-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.planning-block:hover .block-actions {
+  opacity: 1;
+}
+
+.block-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: white;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s ease;
+}
+
+.block-action-btn.edit {
+  color: #6366f1;
+}
+
+.block-action-btn.edit:hover {
+  background: #6366f1;
   color: white;
+}
+
+.block-action-btn.delete {
+  color: #ef4444;
+}
+
+.block-action-btn.delete:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.ghost-block {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  border-left: 3px solid;
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  animation: ghostPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ghostPulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+.ghost-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  border-radius: 8px 0 0 8px;
+}
+
+.ghost-content {
+  padding: 4px 8px 4px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ghost-project {
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ghost-time {
+  font-size: 0.65rem;
+  color: #64748b;
   font-weight: 500;
+}
+
+.drag-drop-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.drop-line-dot {
+  width: 10px;
+  height: 10px;
+  background: #6366f1;
+  border-radius: 50%;
+  margin-left: 65px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+.drop-line {
+  flex: 1;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    #6366f1 0px,
+    #6366f1 6px,
+    transparent 6px,
+    transparent 10px
+  );
+}
+
+.drop-line-label {
+  position: absolute;
+  right: 12px;
+  background: #6366f1;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+@media (max-width: 768px) {
+  .time-labels {
+    width: 50px;
+  }
+
+  .time-label {
+    font-size: 0.6rem;
+  }
+
+  .drop-line-dot {
+    margin-left: 45px;
+  }
 }
 </style>
