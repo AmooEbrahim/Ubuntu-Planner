@@ -204,8 +204,7 @@ class NotificationWorker:
             title=title,
             message=message,
             urgency=urgency,
-            notification_type="planning_start",
-            db=db
+            notification_type="planning_start"
         )
 
         if success:
@@ -244,8 +243,7 @@ class NotificationWorker:
             title=title,
             message=message,
             urgency="normal",
-            notification_type=notification_type,
-            db=db
+            notification_type=notification_type
         )
 
         if success:

@@ -4,9 +4,8 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
 from pydantic import BaseModel
-
 from app.core.database import get_db
-from app.models.setting import Setting
+from app.services.setting_service import SettingService
 from app.services.sound_service import sound_service
 
 
@@ -24,29 +23,38 @@ class BulkSettingUpdate(BaseModel):
     settings: Dict[str, Any]
 
 
+def get_service(db: Session = Depends(get_db)) -> SettingService:
+    """Get setting service instance.
+
+    Args:
+        db: Database session
+
+    Returns:
+        SettingService instance
+    """
+    return SettingService(db)
+
+
 @router.get("/")
-async def get_all_settings(db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_all_settings(service: SettingService = Depends(get_service)) -> Dict[str, Any]:
     """Get all settings as a dictionary.
 
     Returns:
         Dictionary of all settings with key-value pairs
     """
-    settings = db.query(Setting).all()
-
-    result = {}
-    for setting in settings:
-        # SQLAlchemy JSON column already returns parsed value
-        result[setting.key_name] = setting.value_json
-
-    return result
+    return service.get_all()
 
 
 @router.get("/{key_name}")
-async def get_setting(key_name: str, db: Session = Depends(get_db)):
+async def get_setting(
+    key_name: str,
+    service: SettingService = Depends(get_service)
+) -> Any:
     """Get a specific setting.
 
     Args:
         key_name: The setting key to retrieve
+        service: Setting service instance
 
     Returns:
         The setting value
@@ -54,71 +62,48 @@ async def get_setting(key_name: str, db: Session = Depends(get_db)):
     Raises:
         HTTPException: If setting not found
     """
-    setting = db.query(Setting).filter(Setting.key_name == key_name).first()
-
-    if not setting:
+    value = service.get_by_key(key_name)
+    if value is None:
         raise HTTPException(status_code=404, detail="Setting not found")
-
-    # SQLAlchemy JSON column already returns parsed value
-    return setting.value_json
+    return value
 
 
 @router.put("/{key_name}")
 async def update_setting(
     key_name: str,
     value: Any,
-    db: Session = Depends(get_db)
-):
+    service: SettingService = Depends(get_service)
+) -> Dict[str, Any]:
     """Update a setting value.
 
     Args:
         key_name: The setting key to update
         value: The new value for the setting
+        service: Setting service instance
 
     Returns:
         The updated setting
     """
-    setting = db.query(Setting).filter(Setting.key_name == key_name).first()
-
-    # SQLAlchemy JSON column handles serialization automatically
-    if setting:
-        setting.value_json = value
-    else:
-        setting = Setting(key_name=key_name, value_json=value)
-        db.add(setting)
-
-    db.commit()
-    db.refresh(setting)
-
-    return {"key_name": key_name, "value": value}
+    setting = service.set(key_name, value)
+    return {"key_name": setting.key_name, "value": setting.value_json}
 
 
 @router.post("/bulk-update")
 async def bulk_update_settings(
     updates: BulkSettingUpdate,
-    db: Session = Depends(get_db)
+    service: SettingService = Depends(get_service)
 ):
     """Update multiple settings at once.
 
     Args:
         updates: Dictionary of settings to update
+        service: Setting service instance
 
     Returns:
         Number of settings updated
     """
-    for key_name, value in updates.settings.items():
-        setting = db.query(Setting).filter(Setting.key_name == key_name).first()
-
-        # SQLAlchemy JSON column handles serialization automatically
-        if setting:
-            setting.value_json = value
-        else:
-            setting = Setting(key_name=key_name, value_json=value)
-            db.add(setting)
-
-    db.commit()
-
-    return {"updated": len(updates.settings)}
+    updated = service.bulk_update(updates.settings)
+    return {"updated": updated}
 
 
 @router.get("/sounds/available")
@@ -132,7 +117,7 @@ async def get_available_sounds() -> List[str]:
 
 
 @router.get("/sounds/{filename}")
-async def get_sound_file(filename: str):
+async def get_sound_file(filename: str) -> FileResponse:
     """Serve a sound file for preview.
 
     Args:

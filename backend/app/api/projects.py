@@ -1,55 +1,13 @@
 """API routes for project management."""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from typing import List
 from app.core.database import get_db
-from app.models.project import Project
 from app.services.project_service import ProjectService
+from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
+
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
-
-
-# Pydantic schemas
-class ProjectCreate(BaseModel):
-    """Schema for creating a project."""
-
-    name: str = Field(..., min_length=1, max_length=255)
-    parent_id: Optional[int] = None
-    color: str = Field(..., pattern=r'^#[0-9A-Fa-f]{6}$')
-    description: Optional[str] = None
-    default_duration: int = Field(default=60, ge=5)
-    notification_interval: Optional[int] = Field(None, ge=1)
-    is_pinned: bool = False
-
-
-class ProjectUpdate(BaseModel):
-    """Schema for updating a project."""
-
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    parent_id: Optional[int] = None
-    color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
-    description: Optional[str] = None
-    default_duration: Optional[int] = Field(None, ge=5)
-    notification_interval: Optional[int] = Field(None, ge=1)
-    is_archived: Optional[bool] = None
-    is_pinned: Optional[bool] = None
-
-
-class ProjectResponse(BaseModel):
-    """Schema for project response."""
-
-    id: int
-    name: str
-    parent_id: Optional[int]
-    color: str
-    description: Optional[str]
-    default_duration: int
-    notification_interval: Optional[int]
-    is_archived: bool
-    is_pinned: bool
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 def get_service(db: Session = Depends(get_db)) -> ProjectService:

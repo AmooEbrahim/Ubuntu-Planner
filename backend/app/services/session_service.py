@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy.orm import Session as DBSession
+from sqlalchemy.orm import Session as DBSession, selectinload
 from app.models.session import Session
 from app.models.tag import Tag
 
@@ -24,7 +24,15 @@ class SessionService:
         Returns:
             Active session if exists, None otherwise
         """
-        return self.db.query(Session).filter(Session.end_time.is_(None)).first()
+        return (
+            self.db.query(Session)
+            .options(
+                selectinload(Session.project),
+                selectinload(Session.tags)
+            )
+            .filter(Session.end_time.is_(None))
+            .first()
+        )
 
     def get_by_id(self, session_id: int) -> Optional[Session]:
         """Get session by ID.
@@ -35,7 +43,15 @@ class SessionService:
         Returns:
             Session if found, None otherwise
         """
-        return self.db.query(Session).filter(Session.id == session_id).first()
+        return (
+            self.db.query(Session)
+            .options(
+                selectinload(Session.project),
+                selectinload(Session.tags)
+            )
+            .filter(Session.id == session_id)
+            .first()
+        )
 
     def get_recent(self, limit: int = 20) -> List[Session]:
         """Get recent completed sessions.
@@ -48,6 +64,10 @@ class SessionService:
         """
         return (
             self.db.query(Session)
+            .options(
+                selectinload(Session.project),
+                selectinload(Session.tags)
+            )
             .filter(Session.end_time.isnot(None))
             .order_by(Session.start_time.desc())
             .limit(limit)
@@ -60,7 +80,15 @@ class SessionService:
         Returns:
             List of all sessions
         """
-        return self.db.query(Session).order_by(Session.start_time.desc()).all()
+        return (
+            self.db.query(Session)
+            .options(
+                selectinload(Session.project),
+                selectinload(Session.tags)
+            )
+            .order_by(Session.start_time.desc())
+            .all()
+        )
 
     def start_session(self, session_data: dict) -> Session:
         """Start a new session.

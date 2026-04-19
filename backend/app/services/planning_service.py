@@ -2,7 +2,7 @@
 
 from datetime import datetime, date
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.models.planning import Planning
 from app.models.tag import Tag
 
@@ -32,6 +32,10 @@ class PlanningService:
 
         return (
             self.db.query(Planning)
+            .options(
+                selectinload(Planning.project),
+                selectinload(Planning.tags)
+            )
             .filter(
                 Planning.scheduled_start >= start_of_day,
                 Planning.scheduled_start <= end_of_day,
@@ -49,7 +53,15 @@ class PlanningService:
         Returns:
             Planning item if found, None otherwise
         """
-        return self.db.query(Planning).filter(Planning.id == planning_id).first()
+        return (
+            self.db.query(Planning)
+            .options(
+                selectinload(Planning.project),
+                selectinload(Planning.tags)
+            )
+            .filter(Planning.id == planning_id)
+            .first()
+        )
 
     def get_all(self) -> List[Planning]:
         """Get all planning items.
@@ -59,6 +71,10 @@ class PlanningService:
         """
         return (
             self.db.query(Planning)
+            .options(
+                selectinload(Planning.project),
+                selectinload(Planning.tags)
+            )
             .order_by(Planning.scheduled_start.desc())
             .all()
         )

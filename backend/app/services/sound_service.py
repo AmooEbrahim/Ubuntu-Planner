@@ -1,7 +1,7 @@
 """Sound file management service."""
 from pathlib import Path
 from typing import List, Optional
-import os
+from app.core.config import settings
 
 
 class SoundService:
@@ -9,11 +9,9 @@ class SoundService:
 
     def __init__(self):
         """Initialize sound service."""
-        self.project_root = Path(__file__).parent.parent.parent.parent
-        self.custom_sounds_dir = self.project_root / "sounds"
+        self.custom_sounds_dir = settings.sounds_dir
         self.system_sounds_dir = Path("/usr/share/sounds/freedesktop/stereo")
 
-        # Ensure custom sounds directory exists
         self.custom_sounds_dir.mkdir(exist_ok=True)
 
     def get_available_sounds(self) -> List[str]:

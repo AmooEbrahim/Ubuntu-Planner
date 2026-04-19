@@ -1,0 +1,15 @@
+[Unit]
+Description=Ubuntu Planner - All Services (Backend, Frontend, Tray)
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/ebrhaim/bin/bash/Ubuntu-Planner/scripts/start-all.sh
+ExecStop=/home/ebrhaim/bin/bash/Ubuntu-Planner/scripts/stop-all.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

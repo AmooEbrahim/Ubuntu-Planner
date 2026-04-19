@@ -4,108 +4,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session as DBSession
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
 from app.core.database import get_db
 from app.services.session_service import SessionService
+from app.schemas.session import (
+    SessionStart, SessionReview, SessionReviewUpdate, SessionUpdate,
+    AddNoteRequest, AddTimeRequest, SessionResponse
+)
+
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 
-# Pydantic schemas
-class TagResponse(BaseModel):
-    """Tag response schema."""
-
-    id: int
-    name: str
-    color: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ProjectResponse(BaseModel):
-    """Project response schema."""
-
-    id: int
-    name: str
-    color: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class SessionStart(BaseModel):
-    """Schema for starting a session."""
-
-    project_id: Optional[int] = None
-    planned_duration: int
-    planning_id: Optional[int] = None
-    tag_ids: List[int] = []
-
-
-class SessionReview(BaseModel):
-    """Schema for session review data."""
-
-    satisfaction_score: Optional[int] = None
-    tasks_done: Optional[str] = None
-    notes: Optional[str] = None
-    tag_ids: Optional[List[int]] = None
-
-
-class SessionReviewUpdate(BaseModel):
-    """Schema for updating session review (from review page)."""
-
-    satisfaction: int
-    tasks: Optional[str] = None
-    notes: Optional[str] = None
-
-
-class SessionUpdate(BaseModel):
-    """Schema for updating a session."""
-
-    project_id: Optional[int] = None
-    planned_duration: Optional[int] = None
-    actual_duration: Optional[int] = None
-    satisfaction_score: Optional[int] = None
-    tasks_done: Optional[str] = None
-    notes: Optional[str] = None
-    tag_ids: Optional[List[int]] = None
-
-
-class AddNoteRequest(BaseModel):
-    """Schema for adding a note."""
-
-    note: str
-
-
-class AddTimeRequest(BaseModel):
-    """Schema for adding time."""
-
-    minutes: int = 15
-
-
-class SessionResponse(BaseModel):
-    """Schema for session response."""
-
-    id: int
-    project_id: Optional[int]
-    start_time: datetime
-    end_time: Optional[datetime]
-    planned_duration: int
-    actual_duration: Optional[int]
-    planning_id: Optional[int]
-    notes: Optional[str]
-    satisfaction_score: Optional[int]
-    tasks_done: Optional[str]
-    notification_disabled: bool
-    elapsed_minutes: Optional[int] = None  # Computed field for active sessions
-    created_at: datetime
-    updated_at: datetime
-    project: Optional[ProjectResponse] = None
-    tags: List[TagResponse] = []
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-# Dependency
 def get_service(db: DBSession = Depends(get_db)) -> SessionService:
     """Get session service instance.
 
@@ -118,7 +27,6 @@ def get_service(db: DBSession = Depends(get_db)) -> SessionService:
     return SessionService(db)
 
 
-# Routes
 @router.get("/active", response_model=Optional[SessionResponse])
 async def get_active_session(service: SessionService = Depends(get_service)):
     """Get currently active session.
@@ -132,7 +40,6 @@ async def get_active_session(service: SessionService = Depends(get_service)):
     session = service.get_active_session()
 
     if session and not session.end_time:
-        # Calculate elapsed minutes for active session
         elapsed = datetime.now() - session.start_time
         session.elapsed_minutes = int(elapsed.total_seconds() / 60)
 
@@ -347,7 +254,6 @@ async def update_session_review(
         HTTPException: If session not found
     """
     try:
-        # Map frontend names to database column names
         update_data = {
             'satisfaction_score': review_data.satisfaction,
             'tasks_done': review_data.tasks,

@@ -3,75 +3,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict, Field
+from datetime import date
 from app.core.database import get_db
 from app.services.planning_service import PlanningService
+from app.schemas.planning import PlanningCreate, PlanningUpdate, PlanningResponse
+
 
 router = APIRouter(prefix="/api/planning", tags=["planning"])
 
 
-# Pydantic schemas
-class TagResponse(BaseModel):
-    """Tag response schema."""
-
-    id: int
-    name: str
-    color: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ProjectResponse(BaseModel):
-    """Project response schema."""
-
-    id: int
-    name: str
-    color: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class PlanningCreate(BaseModel):
-    """Schema for creating planning."""
-
-    project_id: int
-    scheduled_start: datetime
-    scheduled_end: datetime
-    priority: str = Field(default="medium", pattern="^(low|medium|critical)$")
-    description: Optional[str] = None
-    tag_ids: List[int] = []
-
-
-class PlanningUpdate(BaseModel):
-    """Schema for updating planning."""
-
-    project_id: Optional[int] = None
-    scheduled_start: Optional[datetime] = None
-    scheduled_end: Optional[datetime] = None
-    priority: Optional[str] = Field(default=None, pattern="^(low|medium|critical)$")
-    description: Optional[str] = None
-    tag_ids: Optional[List[int]] = None
-
-
-class PlanningResponse(BaseModel):
-    """Schema for planning response."""
-
-    id: int
-    project_id: int
-    scheduled_start: datetime
-    scheduled_end: datetime
-    priority: str
-    description: Optional[str]
-    created_at: datetime
-    updated_at: datetime
-    project: ProjectResponse
-    tags: List[TagResponse] = []
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-# Dependency
 def get_service(db: Session = Depends(get_db)) -> PlanningService:
     """Get planning service instance.
 
@@ -84,7 +24,6 @@ def get_service(db: Session = Depends(get_db)) -> PlanningService:
     return PlanningService(db)
 
 
-# Routes
 @router.get("/", response_model=List[PlanningResponse])
 async def list_planning(
     date_filter: Optional[date] = Query(None, alias="date"),

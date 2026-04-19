@@ -1,6 +1,6 @@
 """Project service for business logic."""
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.models.project import Project
 
 
@@ -22,9 +22,9 @@ class ProjectService:
             include_archived: Whether to include archived projects
 
         Returns:
-            List of projects
+            List of projects with tags relationship loaded
         """
-        query = self.db.query(Project)
+        query = self.db.query(Project).options(selectinload(Project.tags))
         if not include_archived:
             query = query.filter(Project.is_archived == False)
         return query.all()
@@ -38,7 +38,12 @@ class ProjectService:
         Returns:
             Project if found, None otherwise
         """
-        return self.db.query(Project).filter(Project.id == project_id).first()
+        return (
+            self.db.query(Project)
+            .options(selectinload(Project.tags))
+            .filter(Project.id == project_id)
+            .first()
+        )
 
     def create(self, project_data: dict) -> Project:
         """Create new project.

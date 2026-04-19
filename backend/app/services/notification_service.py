@@ -1,11 +1,11 @@
 import socket
 import tempfile
-import json
 from pathlib import Path
 from typing import Optional
-from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.sound_service import sound_service
+from app.services.setting_service import SettingService
+from app.core.database import SessionLocal
 
 
 class NotificationService:
@@ -14,7 +14,7 @@ class NotificationService:
     def __init__(self):
         self.host = settings.NOTIFICATION_HOST
         self.port = settings.NOTIFICATION_PORT
-        self.config_dir = Path.home() / "bin/bash/Ubuntu-Planner/notifications"
+        self.config_dir = settings.notification_config_dir
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
     def send_notification(
@@ -24,8 +24,7 @@ class NotificationService:
         urgency: str = "normal",
         icon: Optional[str] = None,
         timeout: int = 5000,
-        notification_type: Optional[str] = None,
-        db: Optional[Session] = None
+        notification_type: Optional[str] = None
     ) -> bool:
         """Send a notification.
 
@@ -36,22 +35,16 @@ class NotificationService:
             icon: Path to icon file (optional)
             timeout: Display timeout in milliseconds
             notification_type: Type of notification for sound config (planning_start, session_end, session_reminder)
-            db: Database session for retrieving settings
 
         Returns:
             True if notification sent successfully, False otherwise
         """
         try:
-            # Create config file content
             config_content = self._create_config(
-                title, message, urgency, icon, timeout,
-                notification_type, db
+                title, message, urgency, icon, timeout, notification_type
             )
 
-            # Write to temporary file
             config_path = self._write_temp_config(config_content)
-
-            # Send to notification service
             success = self._send_to_service(config_path)
 
             return success
@@ -60,44 +53,6 @@ class NotificationService:
             print(f"Failed to send notification: {e}")
             return False
 
-    def _get_notification_config(self, notification_type: str, db: Session) -> Optional[dict]:
-        """Get notification configuration for a type.
-
-        Args:
-            notification_type: Type of notification (planning_start, session_end, session_reminder)
-            db: Database session
-
-        Returns:
-            Configuration dict or None if notifications disabled
-        """
-        from app.models.setting import Setting
-
-        # Get enabled setting
-        enabled_key = f"notification_{notification_type}_enabled"
-        enabled_setting = db.query(Setting).filter(
-            Setting.key_name == enabled_key
-        ).first()
-
-        # SQLAlchemy JSON column already returns parsed value
-        if not enabled_setting or not enabled_setting.value_json:
-            return None  # Notifications disabled
-
-        # Get configuration
-        config_key = f"notification_{notification_type}_configuration"
-        config_setting = db.query(Setting).filter(
-            Setting.key_name == config_key
-        ).first()
-
-        if config_setting:
-            return config_setting.value_json
-
-        # Default configuration
-        return {
-            "sound_enabled": True,
-            "sound_file": "complete.oga",
-            "sound_repeat": 1
-        }
-
     def _create_config(
         self,
         title: str,
@@ -105,8 +60,7 @@ class NotificationService:
         urgency: str,
         icon: Optional[str],
         timeout: int,
-        notification_type: Optional[str] = None,
-        db: Optional[Session] = None
+        notification_type: Optional[str] = None
     ) -> str:
         """Create notification config content with sound settings.
 
@@ -117,12 +71,10 @@ class NotificationService:
             icon: Icon path
             timeout: Display timeout
             notification_type: Type for sound config
-            db: Database session
 
         Returns:
             Configuration file content in proper INI format
         """
-        # Build [notification] section
         config_lines = [
             "[notification]",
             "notification_enabled=true",
@@ -137,12 +89,11 @@ class NotificationService:
             f"urgency={urgency}",
             f"timeout={timeout}",
             "transient=true",
-            ""  # Empty line between sections
+            ""
         ])
 
-        # Build [sound] section if type and db provided
-        if notification_type and db:
-            notif_config = self._get_notification_config(notification_type, db)
+        if notification_type:
+            notif_config = self._get_notification_config(notification_type)
 
             if notif_config and notif_config.get('sound_enabled'):
                 sound_file = notif_config.get('sound_file', 'complete.oga')
