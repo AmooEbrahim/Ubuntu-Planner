@@ -52,6 +52,23 @@ async def list_pinned_projects(service: ProjectService = Depends(get_service)):
     return [p for p in service.get_all() if p.is_pinned]
 
 
+@router.get("/recent", response_model=List[ProjectResponse])
+async def list_recent_projects(
+    limit: int = 3,
+    service: ProjectService = Depends(get_service),
+):
+    """List projects most recently used in sessions.
+
+    Args:
+        limit: Maximum number of projects to return
+        service: Project service instance
+
+    Returns:
+        Projects ordered by their latest session start time, newest first.
+    """
+    return service.get_recent(limit=limit)
+
+
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
     project_id: int,

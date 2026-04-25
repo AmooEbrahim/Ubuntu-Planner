@@ -46,7 +46,7 @@ class APIClient:
             List of pinned projects
         """
         try:
-            response = self.session.get(f"{self.base_url}/api/projects?pinned=true")
+            response = self.session.get(f"{self.base_url}/api/projects/pinned")
             return response.json() if response.status_code == 200 else []
         except Exception as e:
             print(f"Failed to get pinned projects: {e}")

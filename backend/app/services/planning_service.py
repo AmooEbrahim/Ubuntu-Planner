@@ -63,6 +63,27 @@ class PlanningService:
             .first()
         )
 
+    def get_active_now(self) -> Optional[Planning]:
+        """Get the planning item whose time window currently contains now.
+
+        Returns:
+            Active planning item if one is in progress, otherwise None.
+        """
+        now = datetime.now()
+        return (
+            self.db.query(Planning)
+            .options(
+                selectinload(Planning.project),
+                selectinload(Planning.tags)
+            )
+            .filter(
+                Planning.scheduled_start <= now,
+                Planning.scheduled_end > now,
+            )
+            .order_by(Planning.scheduled_start.desc())
+            .first()
+        )
+
     def get_all(self) -> List[Planning]:
         """Get all planning items.
 

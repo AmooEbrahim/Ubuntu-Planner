@@ -56,6 +56,36 @@ async def today_planning(service: PlanningService = Depends(get_service)):
     return service.get_by_date(date.today())
 
 
+@router.get("/current")
+async def current_planning(service: PlanningService = Depends(get_service)):
+    """Get the planning item whose schedule covers the current moment.
+
+    Returns:
+        Planning dict enriched with ``planned_duration`` (minutes), or ``null``
+        when no planning is active right now.
+    """
+    planning = service.get_active_now()
+    if not planning:
+        return None
+    duration = int(
+        (planning.scheduled_end - planning.scheduled_start).total_seconds() // 60
+    )
+    return {
+        "id": planning.id,
+        "project_id": planning.project_id,
+        "scheduled_start": planning.scheduled_start.isoformat(),
+        "scheduled_end": planning.scheduled_end.isoformat(),
+        "priority": planning.priority,
+        "description": planning.description,
+        "planned_duration": duration,
+        "project": {
+            "id": planning.project.id,
+            "name": planning.project.name,
+            "color": planning.project.color,
+        },
+    }
+
+
 @router.get("/{planning_id}", response_model=PlanningResponse)
 async def get_planning(planning_id: int, service: PlanningService = Depends(get_service)):
     """Get a specific planning item.

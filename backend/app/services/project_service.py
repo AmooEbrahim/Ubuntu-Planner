@@ -1,7 +1,9 @@
 """Project service for business logic."""
 from typing import List, Optional
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 from app.models.project import Project
+from app.models.session import Session as SessionModel
 
 
 class ProjectService:
@@ -28,6 +30,34 @@ class ProjectService:
         if not include_archived:
             query = query.filter(Project.is_archived == False)
         return query.all()
+
+    def get_recent(self, limit: int = 3) -> List[Project]:
+        """Get non-archived projects ordered by most recent session usage.
+
+        Args:
+            limit: Maximum number of projects to return
+
+        Returns:
+            Projects sorted by their latest session's start_time, newest first.
+        """
+        last_used = (
+            self.db.query(
+                SessionModel.project_id.label("project_id"),
+                func.max(SessionModel.start_time).label("last_used"),
+            )
+            .filter(SessionModel.project_id.isnot(None))
+            .group_by(SessionModel.project_id)
+            .subquery()
+        )
+        return (
+            self.db.query(Project)
+            .options(selectinload(Project.tags))
+            .join(last_used, Project.id == last_used.c.project_id)
+            .filter(Project.is_archived == False)
+            .order_by(last_used.c.last_used.desc())
+            .limit(limit)
+            .all()
+        )
 
     def get_by_id(self, project_id: int) -> Optional[Project]:
         """Get project by ID.
