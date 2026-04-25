@@ -24,6 +24,33 @@ const expandedSessions = ref(new Set()) // Track which sessions are expanded
 const selectedDate = ref(dayjs())
 const viewMode = ref('calendar') // 'calendar', 'day', '3days', or 'week'
 const loading = ref(false)
+const datePickerRef = ref(null)
+
+const selectedDateISO = computed({
+  get: () => selectedDate.value.format('YYYY-MM-DD'),
+  set: (val) => {
+    if (!val) return
+    selectedDate.value = dayjs(val)
+  },
+})
+
+const headerDateLabel = computed(() => {
+  const d = selectedDate.value
+  if (d.isSame(dayjs(), 'day')) return `Today · ${d.format('MMM D, YYYY')}`
+  if (d.isSame(dayjs().subtract(1, 'day'), 'day')) return `Yesterday · ${d.format('MMM D, YYYY')}`
+  if (d.isSame(dayjs().add(1, 'day'), 'day')) return `Tomorrow · ${d.format('MMM D, YYYY')}`
+  return d.format('ddd, MMM D, YYYY')
+})
+
+function openDatePicker() {
+  const el = datePickerRef.value
+  if (!el) return
+  if (typeof el.showPicker === 'function') {
+    try { el.showPicker(); return } catch (_) { /* fallback */ }
+  }
+  el.focus()
+  el.click()
+}
 
 onMounted(async () => {
   await loadData()
@@ -301,9 +328,30 @@ function hasTasksOrNotes(session) {
 
         <!-- Navigation -->
         <div class="date-navigation">
-          <button @click="previousPeriod" class="nav-btn">‹</button>
-          <button @click="goToToday" class="today-btn">Today</button>
-          <button @click="nextPeriod" class="nav-btn">›</button>
+          <button @click="previousPeriod" class="nav-btn" title="Previous">‹</button>
+          <button
+            type="button"
+            class="date-pill"
+            @click="openDatePicker"
+            :title="'Click to pick a date'"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="date-pill-label">{{ headerDateLabel }}</span>
+            <input
+              ref="datePickerRef"
+              v-model="selectedDateISO"
+              type="date"
+              class="date-pill-native"
+              aria-label="Pick a date"
+            />
+          </button>
+          <button @click="goToToday" class="today-btn" :disabled="selectedDate.isSame(dayjs(), 'day')">Today</button>
+          <button @click="nextPeriod" class="nav-btn" title="Next">›</button>
         </div>
 
         <!-- Link to list view -->
@@ -473,7 +521,7 @@ function hasTasksOrNotes(session) {
       v-if="showEditDialog"
       :session="sessionToEdit"
       @close="showEditDialog = false"
-      @updated="handleSessionUpdated"
+      @saved="handleSessionUpdated"
     />
 
     <!-- Session Details Modal -->
@@ -562,9 +610,60 @@ function hasTasksOrNotes(session) {
 }
 
 .nav-btn:hover,
-.today-btn:hover {
+.today-btn:hover:not(:disabled) {
   background-color: #f3f4f6;
   border-color: #10b981;
+}
+
+.today-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.date-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #1f2937;
+  transition: all 0.2s;
+  min-width: 200px;
+  justify-content: center;
+}
+
+.date-pill:hover {
+  border-color: #10b981;
+  color: #059669;
+  background: #f0fdf4;
+}
+
+.date-pill svg {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.date-pill-label {
+  white-space: nowrap;
+}
+
+.date-pill-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  font: inherit;
+  pointer-events: none;
 }
 
 .list-view-link {

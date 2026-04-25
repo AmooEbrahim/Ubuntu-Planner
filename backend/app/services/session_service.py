@@ -250,7 +250,7 @@ class SessionService:
             Updated session
 
         Raises:
-            ValueError: If session not found
+            ValueError: If session not found or end_time precedes start_time
         """
         session = self.get_by_id(session_id)
         if not session:
@@ -264,6 +264,21 @@ class SessionService:
 
         # Skip computed/read-only fields
         update_data.pop("actual_duration", None)
+
+        # The sessions table stores naive local datetimes (datetime.now()
+        # is used at session start). Incoming tz-aware values from the
+        # frontend (ISO strings with "Z") must be converted to naive local
+        # before persisting, otherwise the wall-clock representation drifts.
+        for key in ("start_time", "end_time"):
+            value = update_data.get(key)
+            if isinstance(value, datetime) and value.tzinfo is not None:
+                update_data[key] = value.astimezone().replace(tzinfo=None)
+
+        # Validate ordering when both ends are being touched.
+        new_start = update_data.get("start_time", session.start_time)
+        new_end = update_data.get("end_time", session.end_time)
+        if new_start and new_end and new_end <= new_start:
+            raise ValueError("end_time must be after start_time")
 
         # Update other fields
         for key, value in update_data.items():

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 
@@ -23,23 +23,91 @@ const draggingId = ref(null)
 const draggingItem = ref(null)
 const dragMouseY = ref(0)
 const dragSnappedMinutes = ref(0)
-const planningAreaRef = ref(null)
+const planningAreaRef = ref(null) // ref to the scroll container (also used for drag math)
+const nowMinutes = ref(currentMinutesOfDay())
+let nowTimer = null
 
 const pxPerMinute = 1
+const GUTTER_PX = 4
+const SIDE_PAD_PX = 6
 
-function getPlanningStyle(item) {
+function currentMinutesOfDay() {
+  const now = dayjs()
+  return now.hour() * 60 + now.minute()
+}
+
+const isToday = computed(() => dayjs(props.date).isSame(dayjs(), 'day'))
+
+function itemRange(item) {
   const start = dayjs.utc(item.scheduled_start).local()
   const end = dayjs.utc(item.scheduled_end).local()
+  const startMin = Math.max(0, start.hour() * 60 + start.minute())
+  const endMin = Math.min(24 * 60, Math.max(startMin + 1, startMin + end.diff(start, 'minute')))
+  return { startMin, endMin }
+}
 
-  const startMinutes = start.hour() * 60 + start.minute()
-  const durationMinutes = end.diff(start, 'minute')
+// Lane / column assignment — handles overlapping items by laying them out
+// side-by-side. Returns a map of item.id -> { column, columnsInGroup }.
+const layoutById = computed(() => {
+  const items = props.planning
+    .map((p) => ({ item: p, ...itemRange(p) }))
+    .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin)
 
-  const topPx = startMinutes * pxPerMinute
+  const result = new Map()
+  let group = []
+  let groupEnd = -1
+
+  function flushGroup(g) {
+    // Greedy column packing within the group.
+    const columnsEnd = [] // last endMin per column
+    const placed = []
+    for (const entry of g) {
+      let col = -1
+      for (let i = 0; i < columnsEnd.length; i++) {
+        if (columnsEnd[i] <= entry.startMin) { col = i; break }
+      }
+      if (col === -1) { col = columnsEnd.length; columnsEnd.push(0) }
+      columnsEnd[col] = entry.endMin
+      placed.push({ ...entry, col })
+    }
+    const total = columnsEnd.length
+    for (const p of placed) {
+      result.set(p.item.id, { column: p.col, columnsInGroup: total })
+    }
+  }
+
+  for (const entry of items) {
+    if (group.length === 0 || entry.startMin < groupEnd) {
+      group.push(entry)
+      groupEnd = Math.max(groupEnd, entry.endMin)
+    } else {
+      flushGroup(group)
+      group = [entry]
+      groupEnd = entry.endMin
+    }
+  }
+  if (group.length > 0) flushGroup(group)
+  return result
+})
+
+function getPlanningStyle(item) {
+  const { startMin, endMin } = itemRange(item)
+  const durationMinutes = endMin - startMin
+
+  const topPx = startMin * pxPerMinute
   const heightPx = Math.max(28, durationMinutes * pxPerMinute)
+
+  const layout = layoutById.value.get(item.id) || { column: 0, columnsInGroup: 1 }
+  const cols = Math.max(1, layout.columnsInGroup)
+  // Use percent so the lanes auto-fit the planning-area width.
+  const widthPct = 100 / cols
+  const leftPct = layout.column * widthPct
 
   return {
     top: `${topPx}px`,
     height: `${heightPx}px`,
+    left: `calc(${leftPct}% + ${SIDE_PAD_PX}px)`,
+    width: `calc(${widthPct}% - ${SIDE_PAD_PX * 2}px - ${(cols - 1) * GUTTER_PX / cols}px)`,
   }
 }
 
@@ -167,30 +235,62 @@ function getHourLabel(hour) {
   if (hour === 12) return '12 PM'
   return `${hour - 12} PM`
 }
+
+function scrollToInterestingHour() {
+  const area = planningAreaRef.value
+  if (!area) return
+  let targetMinutes
+  if (isToday.value) {
+    targetMinutes = nowMinutes.value
+  } else if (props.planning.length > 0) {
+    targetMinutes = Math.min(...props.planning.map((p) => itemRange(p).startMin))
+  } else {
+    targetMinutes = 8 * 60 // default to 8 AM
+  }
+  // Scroll so the target lands ~80px below the top edge.
+  area.scrollTop = Math.max(0, targetMinutes * pxPerMinute - 80)
+}
+
+onMounted(() => {
+  nowTimer = setInterval(() => {
+    nowMinutes.value = currentMinutesOfDay()
+  }, 60_000)
+  nextTick(scrollToInterestingHour)
+})
+
+onBeforeUnmount(() => {
+  if (nowTimer) clearInterval(nowTimer)
+})
+
+watch(
+  () => props.date.format('YYYY-MM-DD'),
+  () => {
+    nextTick(scrollToInterestingHour)
+  }
+)
 </script>
 
 <template>
   <div class="calendar-day">
-    <div class="timeline-wrapper">
-      <div class="time-labels">
-        <div
-          v-for="hour in hours"
-          :key="hour"
-          class="time-label"
-          :style="{ top: `${hour * 60}px` }"
-        >
-          {{ getHourLabel(hour) }}
+    <div ref="planningAreaRef" class="timeline-scroll">
+      <div class="timeline-wrapper" :style="{ minHeight: `${24 * 60}px` }">
+        <div class="time-labels">
+          <div
+            v-for="hour in hours"
+            :key="hour"
+            class="time-label"
+            :style="{ top: `${hour * 60}px` }"
+          >
+            {{ getHourLabel(hour) }}
+          </div>
         </div>
-      </div>
 
-      <div
-        ref="planningAreaRef"
-        class="planning-area"
-        :style="{ minHeight: `${24 * 60}px` }"
-        :class="{ 'is-drag-active': draggingId }"
-        @dragover="handleDragOver"
-        @drop="handleDrop"
-      >
+        <div
+          class="planning-area"
+          :class="{ 'is-drag-active': draggingId }"
+          @dragover="handleDragOver"
+          @drop="handleDrop"
+        >
         <div
           v-for="hour in hours"
           :key="hour"
@@ -304,6 +404,17 @@ function getHourLabel(hour) {
             {{ getGhostTime() }}
           </div>
         </div>
+
+        <div
+          v-if="isToday"
+          class="now-line"
+          :style="{ top: `${nowMinutes * pxPerMinute}px` }"
+          aria-hidden="true"
+        >
+          <div class="now-dot"></div>
+          <div class="now-bar"></div>
+        </div>
+        </div>
       </div>
     </div>
   </div>
@@ -315,6 +426,12 @@ function getHourLabel(hour) {
   border-radius: 16px;
   border: 1px solid #e2e8f0;
   overflow: hidden;
+}
+
+.timeline-scroll {
+  max-height: 800px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .timeline-wrapper {
@@ -345,9 +462,6 @@ function getHourLabel(hour) {
 .planning-area {
   flex: 1;
   position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-height: 800px;
 }
 
 .planning-area.is-drag-active {
@@ -381,14 +495,13 @@ function getHourLabel(hour) {
 
 .planning-block {
   position: absolute;
-  left: 6px;
-  right: 6px;
   border-left: 3px solid;
   border-radius: 8px;
   overflow: hidden;
   cursor: grab;
   transition: box-shadow 0.2s ease, transform 0.15s ease;
   z-index: 10;
+  background-clip: padding-box;
 }
 
 .planning-block:hover {
@@ -620,6 +733,32 @@ function getHourLabel(hour) {
   font-weight: 600;
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.now-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  margin-left: -5px;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  flex-shrink: 0;
+}
+
+.now-bar {
+  flex: 1;
+  height: 2px;
+  background: #ef4444;
 }
 
 @media (max-width: 768px) {

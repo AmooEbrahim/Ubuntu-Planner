@@ -16,6 +16,26 @@ const defaultStartTime = ref(null)
 const loading = ref(false)
 const error = ref('')
 const dragSaving = ref(false)
+const datePickerRef = ref(null)
+
+const currentDateISO = computed({
+  get: () => currentDate.value.format('YYYY-MM-DD'),
+  set: (val) => {
+    if (!val) return
+    currentDate.value = dayjs(val)
+    loadPlanning()
+  },
+})
+
+function openDatePicker() {
+  const el = datePickerRef.value
+  if (!el) return
+  if (typeof el.showPicker === 'function') {
+    try { el.showPicker(); return } catch (_) { /* fallback */ }
+  }
+  el.focus()
+  el.click()
+}
 
 const displayDate = computed(() => currentDate.value.format('MMMM D, YYYY'))
 const isToday = computed(() => currentDate.value.isSame(dayjs(), 'day'))
@@ -166,11 +186,29 @@ function closeForm() {
         </button>
       </div>
 
-      <div class="current-date">
+      <button
+        type="button"
+        class="current-date date-pill"
+        @click="openDatePicker"
+        title="Click to pick a date"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
         <span class="date-day">{{ dayName }}</span>
         <span class="date-full">{{ displayDate }}</span>
         <span v-if="isToday" class="today-badge">Today</span>
-      </div>
+        <input
+          ref="datePickerRef"
+          v-model="currentDateISO"
+          type="date"
+          class="date-pill-native"
+          aria-label="Pick a date"
+        />
+      </button>
 
       <div class="stats">
         <div class="stat-item">
@@ -366,6 +404,42 @@ function closeForm() {
   display: flex;
   align-items: center;
   gap: 0.625rem;
+}
+
+.date-pill {
+  position: relative;
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 10px;
+  padding: 0.5rem 0.875rem;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: all var(--transition);
+}
+
+.date-pill:hover {
+  border-color: #6366f1;
+  background: #f5f3ff;
+}
+
+.date-pill > svg {
+  color: #6366f1;
+  margin-right: 0.25rem;
+  flex-shrink: 0;
+}
+
+.date-pill-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  font: inherit;
+  pointer-events: none;
 }
 
 .date-day {

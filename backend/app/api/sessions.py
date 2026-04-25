@@ -231,7 +231,9 @@ async def update_session(
     try:
         return service.update_session(session_id, data.model_dump(exclude_unset=True))
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/{session_id}/review", response_model=SessionResponse)

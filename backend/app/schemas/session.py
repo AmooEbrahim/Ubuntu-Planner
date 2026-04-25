@@ -52,6 +52,8 @@ class SessionUpdate(BaseModel):
     tasks_done: Optional[str] = None
     notes: Optional[str] = None
     tag_ids: Optional[List[int]] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
 
 
 class AddNoteRequest(BaseModel):

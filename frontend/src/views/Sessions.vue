@@ -5,6 +5,9 @@ import { useProjectStore } from '@/stores/projects'
 import StartSessionDialog from '@/components/StartSessionDialog.vue'
 import EditSessionDialog from '@/components/EditSessionDialog.vue'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
 
 const sessionStore = useSessionStore()
 const projectStore = useProjectStore()
