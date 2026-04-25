@@ -51,4 +51,19 @@ See [Documents/roadmap/](Documents/roadmap/) for version-specific implementation
 
 ## License
 
-[To be determined]
+Ubuntu Planner is licensed under the **[PolyForm Noncommercial License 1.0.0](LICENSE)**.
+
+In short:
+
+- ✅ **Free** for personal, hobby, research, educational, and other noncommercial use.
+- ✅ You may copy, modify, and redistribute it for those purposes, as long as you keep the
+  license and copyright notice intact.
+- ❌ **Commercial use is not permitted** under this license. That includes selling the
+  software, hosting it as a paid service, bundling it into a paid product, or using it as
+  part of a for-profit organization's operations.
+
+If you would like to use this product commercially, please contact
+**ebrahimbashirpour@gmail.com** to request a separate commercial license.
+
+The full legal text is in [LICENSE](LICENSE). This summary is informational only — the
+LICENSE file is what governs.
