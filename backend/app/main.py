@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings as config_settings
-from app.api import projects, tags, planning, sessions, statistics, settings
+from app.api import projects, tags, planning, sessions, statistics, settings, day_memory, chat, ai_settings
 from app.tasks.notification_worker import notification_worker
 
 
@@ -40,6 +40,10 @@ app.include_router(planning.router)
 app.include_router(sessions.router)
 app.include_router(statistics.router)
 app.include_router(settings.router)
+app.include_router(day_memory.router)
+app.include_router(chat.router)
+app.include_router(chat.memory_router)
+app.include_router(ai_settings.router)
 
 
 @app.get("/")

@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     NOTIFICATION_CONFIG_DIR: Optional[str] = None
     SOUNDS_DIR: Optional[str] = None
 
+    # AI provider defaults — can be overridden at runtime via the settings table.
+    AI_ENABLED: bool = False
+    AI_PROVIDER: str = "openai_compatible"
+    AI_MODEL: str = "openai/gpt-oss-120b:free"
+    AI_BASE_URL: str = "https://openrouter.ai/api/v1"
+    AI_API_KEY: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parent.parent.parent.parent / ".env",
         extra="ignore",

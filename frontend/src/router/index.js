@@ -8,6 +8,9 @@ import SessionsDaily from '../views/SessionsDaily.vue'
 import Statistics from '../views/Statistics.vue'
 import SessionReview from '../views/SessionReview.vue'
 import Settings from '../views/Settings.vue'
+import DayMemory from '../views/DayMemory.vue'
+import Chat from '../views/Chat.vue'
+import AISettings from '../views/AISettings.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -56,6 +59,31 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: Settings
+    },
+    {
+      path: '/day-memory',
+      name: 'day-memory',
+      component: DayMemory
+    },
+    {
+      path: '/day-memory/:date',
+      name: 'day-memory-date',
+      component: DayMemory
+    },
+    {
+      path: '/chat',
+      name: 'chat',
+      component: Chat
+    },
+    {
+      path: '/chat/:id',
+      name: 'chat-detail',
+      component: Chat
+    },
+    {
+      path: '/settings/ai',
+      name: 'ai-settings',
+      component: AISettings
     }
   ]
 })
