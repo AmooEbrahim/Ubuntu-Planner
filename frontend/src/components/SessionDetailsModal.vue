@@ -32,7 +32,6 @@ function cancelEditingTimes() {
 
 function saveTimeChanges() {
   saving.value = true
-  // Keep the datetime-local format and let backend handle it
   emit('update-times', {
     sessionId: props.session.id,
     start_time: startTime.value ? dayjs(startTime.value).toISOString() : null,
@@ -40,10 +39,6 @@ function saveTimeChanges() {
   })
   editingTimes.value = false
   saving.value = false
-}
-
-function formatTime(datetime) {
-  return dayjs(datetime).format('HH:mm')
 }
 
 function formatDateTime(datetime) {
@@ -63,7 +58,6 @@ const actualDuration = computed(() => {
     const end = dayjs(props.session.end_time)
     return Math.floor(end.diff(start, 'minute'))
   }
-  // For active sessions
   const start = dayjs(props.session.start_time)
   const now = dayjs()
   return Math.floor(now.diff(start, 'minute'))
@@ -72,113 +66,119 @@ const actualDuration = computed(() => {
 const isOvertime = computed(() => {
   return actualDuration.value > props.session.planned_duration
 })
-
-const isActive = computed(() => {
-  return !props.session.end_time
-})
 </script>
 
 <template>
   <div class="modal-overlay" @click.self="emit('close')">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Session Details</h2>
-        <button @click="emit('close')" class="close-btn">&times;</button>
+    <div class="glass-panel w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center p-6 border-b border-fg-subtle/15">
+        <h2 class="text-xl font-bold text-fg">Session Details</h2>
+        <button @click="emit('close')" class="icon-btn" title="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
 
-      <div class="modal-body">
-        <!-- Project Info -->
-        <div class="info-section">
-          <div class="section-label">Project</div>
-          <div class="project-display" v-if="session.project">
-            <span class="project-dot" :style="{ backgroundColor: session.project.color }"></span>
-            <span class="project-name">{{ session.project.name }}</span>
+      <div class="p-6 overflow-y-auto flex-1 space-y-5">
+        <!-- Project -->
+        <div>
+          <div class="label">Project</div>
+          <div v-if="session.project" class="glass-inset flex items-center gap-2 p-3">
+            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ backgroundColor: session.project.color }"></span>
+            <span class="text-base font-semibold text-fg">{{ session.project.name }}</span>
           </div>
-          <div v-else class="no-data">No Project</div>
+          <div v-else class="glass-inset p-3 italic text-fg-subtle">No Project</div>
         </div>
 
-        <!-- Time Info -->
-        <div class="info-section">
-          <div class="section-header">
-            <div class="section-label">Time</div>
+        <!-- Time -->
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <div class="label !mb-0">Time</div>
             <button
               v-if="!editingTimes"
               @click="startEditingTimes"
-              class="edit-time-btn"
+              class="btn btn-secondary btn-sm"
               title="Edit times"
             >
-              ✎ Edit
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Edit
             </button>
           </div>
 
-          <!-- View Mode -->
-          <div v-if="!editingTimes" class="time-display">
-            <div class="time-item">
-              <span class="time-label">Started:</span>
-              <span class="time-value">{{ formatDateTime(session.start_time) }}</span>
+          <div v-if="!editingTimes" class="space-y-2">
+            <div class="glass-inset flex justify-between items-center p-3">
+              <span class="text-sm font-semibold text-muted">Started:</span>
+              <span class="text-sm text-fg">{{ formatDateTime(session.start_time) }}</span>
             </div>
-            <div v-if="session.end_time" class="time-item">
-              <span class="time-label">Ended:</span>
-              <span class="time-value">{{ formatDateTime(session.end_time) }}</span>
+            <div v-if="session.end_time" class="glass-inset flex justify-between items-center p-3">
+              <span class="text-sm font-semibold text-muted">Ended:</span>
+              <span class="text-sm text-fg">{{ formatDateTime(session.end_time) }}</span>
             </div>
-            <div v-else class="time-item active-indicator">
-              <span class="active-badge">● Active Session</span>
+            <div v-else class="flex justify-center">
+              <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-success text-white text-sm font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                Active Session
+              </span>
             </div>
           </div>
 
-          <!-- Edit Mode -->
-          <div v-else class="time-edit">
-            <div class="time-input-group">
-              <label class="input-label">Start Time:</label>
+          <div v-else class="space-y-3">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-sm font-semibold text-fg">Start Time:</label>
               <input
                 type="datetime-local"
                 v-model="startTime"
-                class="time-input"
+                class="input"
               />
             </div>
-            <div class="time-input-group">
-              <label class="input-label">End Time:</label>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-sm font-semibold text-fg">End Time:</label>
               <input
                 type="datetime-local"
                 v-model="endTime"
-                class="time-input"
+                class="input"
               />
             </div>
-            <div class="time-edit-actions">
-              <button @click="cancelEditingTimes" class="btn btn-secondary-small">Cancel</button>
-              <button @click="saveTimeChanges" :disabled="saving" class="btn btn-primary-small">
+            <div class="flex justify-end gap-2 mt-2">
+              <button @click="cancelEditingTimes" class="btn btn-secondary btn-sm">Cancel</button>
+              <button @click="saveTimeChanges" :disabled="saving" class="btn btn-primary btn-sm">
                 {{ saving ? 'Saving...' : 'Save' }}
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Duration Info -->
-        <div class="info-section">
-          <div class="section-label">Duration</div>
-          <div class="duration-display">
-            <div class="duration-item">
-              <span class="duration-label">Planned:</span>
-              <span class="duration-value">{{ formatDuration(session.planned_duration) }}</span>
+        <!-- Duration -->
+        <div>
+          <div class="label">Duration</div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="glass-inset p-3 text-center">
+              <span class="block text-xs font-semibold text-muted mb-1">Planned</span>
+              <span class="block text-xl font-bold text-success">{{ formatDuration(session.planned_duration) }}</span>
             </div>
-            <div class="duration-item">
-              <span class="duration-label">Actual:</span>
-              <span class="duration-value" :class="{ overtime: isOvertime }">
+            <div class="glass-inset p-3 text-center">
+              <span class="block text-xs font-semibold text-muted mb-1">Actual</span>
+              <span class="block text-xl font-bold" :class="isOvertime ? 'text-warning' : 'text-success'">
                 {{ formatDuration(actualDuration) }}
-                <span v-if="isOvertime" class="overtime-badge">Overtime</span>
+                <span v-if="isOvertime" class="block text-xs text-warning font-medium mt-1">Overtime</span>
               </span>
             </div>
           </div>
         </div>
 
         <!-- Tags -->
-        <div v-if="session.tags && session.tags.length > 0" class="info-section">
-          <div class="section-label">Tags</div>
-          <div class="tags-display">
+        <div v-if="session.tags && session.tags.length > 0">
+          <div class="label">Tags</div>
+          <div class="flex flex-wrap gap-2">
             <span
               v-for="tag in session.tags"
               :key="tag.id"
-              class="tag-chip"
+              class="px-3 py-1.5 rounded-md text-white text-sm font-medium"
               :style="{ backgroundColor: tag.color }"
             >
               {{ tag.name }}
@@ -187,30 +187,30 @@ const isActive = computed(() => {
         </div>
 
         <!-- Satisfaction -->
-        <div v-if="session.satisfaction_score && session.satisfaction_score > 0" class="info-section">
-          <div class="section-label">Satisfaction Score</div>
-          <div class="satisfaction-display">
-            <div class="satisfaction-bar-container">
-              <div class="satisfaction-bar" :style="{ width: session.satisfaction_score + '%' }"></div>
+        <div v-if="session.satisfaction_score && session.satisfaction_score > 0">
+          <div class="label">Satisfaction Score</div>
+          <div class="flex items-center gap-3">
+            <div class="flex-1 h-3 rounded-full bg-fg-subtle/20 overflow-hidden">
+              <div class="h-full rounded-full transition-[width] duration-300" :style="{ width: session.satisfaction_score + '%', background: 'linear-gradient(to right, rgb(var(--danger)), rgb(var(--warning)), rgb(var(--success)))' }"></div>
             </div>
-            <div class="satisfaction-value">{{ session.satisfaction_score }}/100</div>
+            <div class="text-base font-bold text-fg min-w-[4rem] text-right">{{ session.satisfaction_score }}/100</div>
           </div>
         </div>
 
-        <!-- Tasks Accomplished -->
-        <div v-if="session.tasks_done && session.tasks_done.trim()" class="info-section">
-          <div class="section-label">✓ Tasks Accomplished</div>
-          <div class="content-display">{{ session.tasks_done }}</div>
+        <!-- Tasks -->
+        <div v-if="session.tasks_done && session.tasks_done.trim()">
+          <div class="label flex items-center gap-1.5"><span class="text-success">✓</span> Tasks Accomplished</div>
+          <div class="glass-inset p-3 text-sm text-fg leading-relaxed whitespace-pre-wrap break-words">{{ session.tasks_done }}</div>
         </div>
 
         <!-- Notes -->
-        <div v-if="session.notes && session.notes.trim()" class="info-section">
-          <div class="section-label">📝 Notes</div>
-          <div class="content-display">{{ session.notes }}</div>
+        <div v-if="session.notes && session.notes.trim()">
+          <div class="label flex items-center gap-1.5"><span>📝</span> Notes</div>
+          <div class="glass-inset p-3 text-sm text-fg leading-relaxed whitespace-pre-wrap break-words">{{ session.notes }}</div>
         </div>
       </div>
 
-      <div class="modal-footer">
+      <div class="flex justify-end gap-2 p-6 border-t border-fg-subtle/15">
         <button @click="emit('close')" class="btn btn-secondary">Close</button>
         <button @click="emit('edit', session)" class="btn btn-primary">Edit</button>
         <button @click="emit('delete', session)" class="btn btn-danger">Delete</button>
@@ -218,388 +218,3 @@ const isActive = computed(() => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  padding: 1rem;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  cursor: pointer;
-  color: #6b7280;
-  line-height: 1;
-  transition: color 0.2s;
-}
-
-.close-btn:hover {
-  color: #111827;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.info-section {
-  margin-bottom: 1.5rem;
-}
-
-.info-section:last-child {
-  margin-bottom: 0;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.section-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.edit-time-btn {
-  padding: 0.375rem 0.75rem;
-  background-color: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.edit-time-btn:hover {
-  background-color: #e5e7eb;
-  border-color: #9ca3af;
-}
-
-.project-display {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background-color: #f9fafb;
-  border-radius: 6px;
-}
-
-.project-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.project-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.no-data {
-  padding: 0.75rem;
-  background-color: #f9fafb;
-  border-radius: 6px;
-  color: #9ca3af;
-  font-style: italic;
-}
-
-.time-display {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.time-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  background-color: #f9fafb;
-  border-radius: 6px;
-}
-
-.time-label {
-  font-weight: 600;
-  color: #6b7280;
-  font-size: 0.875rem;
-}
-
-.time-value {
-  color: #111827;
-  font-size: 0.875rem;
-}
-
-.active-indicator {
-  justify-content: center;
-}
-
-.active-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.5rem 1rem;
-  background-color: #10b981;
-  color: white;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.time-edit {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.time-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.input-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-}
-
-.time-input {
-  padding: 0.625rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  color: #111827;
-  background-color: white;
-  transition: all 0.2s;
-}
-
-.time-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.time-edit-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.btn-secondary-small,
-.btn-primary-small {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  font-size: 0.875rem;
-}
-
-.btn-secondary-small {
-  background-color: #e5e7eb;
-  color: #374151;
-}
-
-.btn-secondary-small:hover {
-  background-color: #d1d5db;
-}
-
-.btn-primary-small {
-  background-color: #3b82f6;
-  color: white;
-}
-
-.btn-primary-small:hover:not(:disabled) {
-  background-color: #2563eb;
-}
-
-.btn-primary-small:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.duration-display {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-
-.duration-item {
-  padding: 0.75rem;
-  background-color: #f9fafb;
-  border-radius: 6px;
-  text-align: center;
-}
-
-.duration-label {
-  display: block;
-  font-size: 0.75rem;
-  color: #6b7280;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.duration-value {
-  display: block;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #059669;
-}
-
-.duration-value.overtime {
-  color: #f59e0b;
-}
-
-.overtime-badge {
-  display: block;
-  font-size: 0.7rem;
-  color: #f59e0b;
-  font-weight: 500;
-  margin-top: 0.25rem;
-}
-
-.tags-display {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.tag-chip {
-  padding: 0.375rem 0.75rem;
-  border-radius: 4px;
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.satisfaction-display {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.satisfaction-bar-container {
-  flex: 1;
-  height: 12px;
-  background-color: #e5e7eb;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.satisfaction-bar {
-  height: 100%;
-  background: linear-gradient(to right, #ef4444, #f59e0b, #10b981);
-  border-radius: 6px;
-  transition: width 0.3s ease;
-}
-
-.satisfaction-value {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #111827;
-  min-width: 4rem;
-  text-align: right;
-}
-
-.content-display {
-  padding: 0.75rem;
-  background-color: #f9fafb;
-  border-radius: 6px;
-  color: #374151;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1.5rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  font-size: 0.875rem;
-}
-
-.btn-secondary {
-  background-color: #e5e7eb;
-  color: #374151;
-}
-
-.btn-secondary:hover {
-  background-color: #d1d5db;
-}
-
-.btn-primary {
-  background-color: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #2563eb;
-}
-
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #dc2626;
-}
-</style>

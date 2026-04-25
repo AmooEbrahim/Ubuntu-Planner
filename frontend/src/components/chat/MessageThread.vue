@@ -1,42 +1,52 @@
 <template>
-  <div ref="scrollEl" class="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 space-y-4 bg-gray-50">
-    <div v-if="!groups.length" class="h-full flex items-center justify-center">
-      <div class="text-center max-w-md">
-        <div class="mx-auto mb-3 h-12 w-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl">💬</div>
-        <h3 class="text-lg font-semibold text-gray-900">Say hi to your planner</h3>
-        <p class="text-sm text-gray-500 mt-1">Ask about today's plan, start a session, or write a journal entry — the AI can help.</p>
+  <div ref="scrollEl" class="flex-1 min-h-0 overflow-y-auto pt-6 pb-2 px-4">
+    <div class="max-w-3xl mx-auto space-y-5">
+      <div v-if="!groups.length" class="flex items-center justify-center py-16">
+        <div class="text-center max-w-md">
+          <div
+            class="mx-auto mb-4 h-16 w-16 rounded-2xl text-white flex items-center justify-center shadow-md"
+            style="background: linear-gradient(135deg, #a855f7, rgb(var(--accent))); box-shadow: 0 8px 24px rgba(168, 85, 247, 0.35);"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
+              <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"></path>
+              <path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold text-fg">Say hi to your planner</h3>
+          <p class="text-sm text-muted mt-1">Ask about today's plan, start a session, or write a journal entry — the AI can help.</p>
+        </div>
       </div>
-    </div>
 
-    <template v-for="group in groups" :key="group.key">
-      <MessageBubble
-        v-if="group.kind === 'message'"
-        :role="group.message.role"
-        :content="group.message.content"
-        :streaming="group.message.streaming"
-        :meta="group.message.meta"
-      />
-      <template v-else>
-        <ToolCallCard
-          v-if="!hideTools || group.toolUse.status === 'pending'"
-          :tool-name="group.toolUse.tool_name || 'tool'"
-          :args="group.toolUse.tool_args"
-          :result="group.result?.tool_result"
-          :status="group.toolUse.status"
-          :busy="group.busy"
-          :default-open="group.toolUse.status === 'pending' || group.toolUse.status === 'error'"
-          @approve="$emit('approve-tool', group.toolUse)"
-          @deny="$emit('deny-tool', group.toolUse)"
+      <template v-for="group in groups" :key="group.key">
+        <MessageBubble
+          v-if="group.kind === 'message'"
+          :role="group.message.role"
+          :content="group.message.content"
+          :streaming="group.message.streaming"
+          :meta="group.message.meta"
         />
+        <template v-else>
+          <ToolCallCard
+            v-if="!hideTools || group.toolUse.status === 'pending'"
+            :tool-name="group.toolUse.tool_name || 'tool'"
+            :args="group.toolUse.tool_args"
+            :result="group.result?.tool_result"
+            :status="group.toolUse.status"
+            :busy="group.busy"
+            :default-open="group.toolUse.status === 'pending' || group.toolUse.status === 'error'"
+            @approve="$emit('approve-tool', group.toolUse)"
+            @deny="$emit('deny-tool', group.toolUse)"
+          />
+        </template>
       </template>
-    </template>
 
-    <SuggestedReplies
-      v-if="latestSuggestions.length"
-      :suggestions="latestSuggestions"
-      :disabled="disablePicks"
-      @pick="$emit('pick-reply', $event)"
-    />
+      <SuggestedReplies
+        v-if="latestSuggestions.length"
+        :suggestions="latestSuggestions"
+        :disabled="disablePicks"
+        @pick="$emit('pick-reply', $event)"
+      />
+    </div>
   </div>
 </template>
 
@@ -55,8 +65,6 @@ const props = defineProps({
 defineEmits(['approve-tool', 'deny-tool', 'pick-reply'])
 
 const latestSuggestions = computed(() => {
-  // Show suggestions only on the most recent assistant message that's
-  // already complete (not streaming) and has any pending tool calls cleared.
   for (let i = props.messages.length - 1; i >= 0; i--) {
     const m = props.messages[i]
     if (m.role === 'tool_use' && m.status === 'pending') return []
@@ -93,7 +101,6 @@ const groups = computed(() => {
     }
     if (m.role === 'tool_result') {
       if (usedResults.has(m.id)) continue
-      // Orphan result (shouldn't normally happen) — render as system note
       result.push({
         kind: 'message',
         key: `msg-${m.id}`,

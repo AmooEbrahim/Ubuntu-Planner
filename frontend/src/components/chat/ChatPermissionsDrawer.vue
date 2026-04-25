@@ -10,7 +10,7 @@
         leave-from="opacity-100"
         leave-to="opacity-0"
       >
-        <div class="fixed inset-0 bg-black/30" />
+        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm dark:bg-black/60" />
       </TransitionChild>
 
       <div class="fixed inset-y-0 right-0 flex max-w-full">
@@ -23,34 +23,39 @@
           leave-from="translate-x-0"
           leave-to="translate-x-full"
         >
-          <DialogPanel class="w-screen max-w-md bg-white shadow-xl flex flex-col h-full">
-            <header class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-              <DialogTitle class="text-base font-semibold text-gray-900">Permissions for this chat</DialogTitle>
+          <DialogPanel class="w-screen max-w-md glass-panel !rounded-none flex flex-col h-full">
+            <header class="px-5 py-4 border-b border-fg-subtle/15 flex items-center justify-between">
+              <DialogTitle class="text-base font-bold text-fg">Permissions for this chat</DialogTitle>
               <button
                 type="button"
-                class="text-gray-400 hover:text-gray-700"
+                class="icon-btn"
                 @click="$emit('close')"
-              >✕</button>
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </header>
 
-            <div class="px-5 py-3 border-b border-gray-100 text-xs text-gray-500">
+            <div class="px-5 py-3 border-b border-fg-subtle/15 text-xs text-muted">
               Per-chat overrides. Empty selection = use the global default from
-              <RouterLink to="/settings/ai" class="text-blue-600 hover:underline">AI settings</RouterLink>.
+              <RouterLink to="/settings/ai" class="text-accent hover:underline">AI settings</RouterLink>.
             </div>
 
-            <ul class="flex-1 overflow-y-auto divide-y divide-gray-100">
+            <ul class="flex-1 overflow-y-auto divide-y divide-fg-subtle/10">
               <li
                 v-for="t in tools"
                 :key="t.name"
                 class="px-5 py-3 flex items-start justify-between gap-3"
               >
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-gray-900 font-mono">{{ t.name }}</p>
-                  <p class="text-xs text-gray-500 mt-0.5">{{ t.description }}</p>
+                  <p class="text-sm font-semibold text-fg font-mono">{{ t.name }}</p>
+                  <p class="text-xs text-muted mt-0.5">{{ t.description }}</p>
                 </div>
                 <select
                   :value="overrides[t.name] ?? ''"
-                  class="text-xs rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="input text-xs py-1 px-2 w-auto"
                   @change="onChange(t.name, $event.target.value)"
                 >
                   <option value="">default</option>
@@ -61,15 +66,15 @@
               </li>
             </ul>
 
-            <footer class="px-5 py-3 border-t border-gray-200 flex items-center justify-between gap-3">
+            <footer class="px-5 py-3 border-t border-fg-subtle/15 flex items-center justify-between gap-3">
               <button
                 type="button"
-                class="text-xs text-gray-500 hover:text-gray-800"
+                class="text-xs text-muted hover:text-fg transition-colors"
                 @click="$emit('clear')"
               >Reset all to defaults</button>
               <button
                 type="button"
-                class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                class="btn btn-primary btn-sm"
                 @click="$emit('close')"
               >Done</button>
             </footer>

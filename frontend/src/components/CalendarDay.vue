@@ -23,7 +23,7 @@ const draggingId = ref(null)
 const draggingItem = ref(null)
 const dragMouseY = ref(0)
 const dragSnappedMinutes = ref(0)
-const planningAreaRef = ref(null) // ref to the scroll container (also used for drag math)
+const planningAreaRef = ref(null)
 const nowMinutes = ref(currentMinutesOfDay())
 let nowTimer = null
 
@@ -46,8 +46,6 @@ function itemRange(item) {
   return { startMin, endMin }
 }
 
-// Lane / column assignment — handles overlapping items by laying them out
-// side-by-side. Returns a map of item.id -> { column, columnsInGroup }.
 const layoutById = computed(() => {
   const items = props.planning
     .map((p) => ({ item: p, ...itemRange(p) }))
@@ -58,8 +56,7 @@ const layoutById = computed(() => {
   let groupEnd = -1
 
   function flushGroup(g) {
-    // Greedy column packing within the group.
-    const columnsEnd = [] // last endMin per column
+    const columnsEnd = []
     const placed = []
     for (const entry of g) {
       let col = -1
@@ -99,7 +96,6 @@ function getPlanningStyle(item) {
 
   const layout = layoutById.value.get(item.id) || { column: 0, columnsInGroup: 1 }
   const cols = Math.max(1, layout.columnsInGroup)
-  // Use percent so the lanes auto-fit the planning-area width.
   const widthPct = 100 / cols
   const leftPct = layout.column * widthPct
 
@@ -245,9 +241,8 @@ function scrollToInterestingHour() {
   } else if (props.planning.length > 0) {
     targetMinutes = Math.min(...props.planning.map((p) => itemRange(p).startMin))
   } else {
-    targetMinutes = 8 * 60 // default to 8 AM
+    targetMinutes = 8 * 60
   }
-  // Scroll so the target lands ~80px below the top edge.
   area.scrollTop = Math.max(0, targetMinutes * pxPerMinute - 80)
 }
 
@@ -271,7 +266,7 @@ watch(
 </script>
 
 <template>
-  <div class="calendar-day">
+  <div class="calendar-day glass-card overflow-hidden">
     <div ref="planningAreaRef" class="timeline-scroll">
       <div class="timeline-wrapper" :style="{ minHeight: `${24 * 60}px` }">
         <div class="time-labels">
@@ -421,13 +416,6 @@ watch(
 </template>
 
 <style scoped>
-.calendar-day {
-  background: white;
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-}
-
 .timeline-scroll {
   max-height: 800px;
   overflow-y: auto;
@@ -443,8 +431,8 @@ watch(
   width: 70px;
   flex-shrink: 0;
   position: relative;
-  border-right: 1px solid #e2e8f0;
-  background: #fafbfc;
+  border-right: 1px solid rgb(var(--glass-divider) / var(--glass-divider-alpha));
+  background: rgb(var(--glass-bg) / 0.25);
 }
 
 .time-label {
@@ -454,7 +442,7 @@ watch(
   text-align: center;
   font-size: 0.7rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: rgb(var(--fg-subtle));
   transform: translateY(-8px);
   padding: 0 0.5rem;
 }
@@ -465,7 +453,7 @@ watch(
 }
 
 .planning-area.is-drag-active {
-  background: rgba(99, 102, 241, 0.02);
+  background: rgb(var(--accent) / 0.04);
 }
 
 .hour-line {
@@ -478,11 +466,11 @@ watch(
 }
 
 .hour-line:hover {
-  background: rgba(99, 102, 241, 0.03);
+  background: rgb(var(--accent) / 0.05);
 }
 
 .planning-area.is-drag-active .hour-line:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: rgb(var(--accent) / 0.08);
 }
 
 .hour-line-inner {
@@ -490,22 +478,23 @@ watch(
   left: 0;
   right: 0;
   top: 0;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid rgb(var(--glass-divider) / var(--glass-divider-alpha));
 }
 
 .planning-block {
   position: absolute;
   border-left: 3px solid;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
   cursor: grab;
   transition: box-shadow 0.2s ease, transform 0.15s ease;
   z-index: 10;
   background-clip: padding-box;
+  backdrop-filter: blur(8px);
 }
 
 .planning-block:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   z-index: 20;
 }
 
@@ -568,14 +557,14 @@ watch(
 
 .block-time {
   font-size: 0.7rem;
-  color: #64748b;
+  color: rgb(var(--fg-muted));
   font-weight: 500;
   white-space: nowrap;
 }
 
 .block-desc {
   font-size: 0.7rem;
-  color: #94a3b8;
+  color: rgb(var(--fg-subtle));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -617,28 +606,29 @@ watch(
   width: 22px;
   height: 22px;
   border: none;
-  background: white;
-  border-radius: 5px;
+  background: rgb(var(--glass-bg) / 0.85);
+  border-radius: 6px;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   transition: all 0.15s ease;
+  backdrop-filter: blur(6px);
 }
 
 .block-action-btn.edit {
-  color: #6366f1;
+  color: rgb(var(--accent));
 }
 
 .block-action-btn.edit:hover {
-  background: #6366f1;
+  background: rgb(var(--accent));
   color: white;
 }
 
 .block-action-btn.delete {
-  color: #ef4444;
+  color: rgb(var(--danger));
 }
 
 .block-action-btn.delete:hover {
-  background: #ef4444;
+  background: rgb(var(--danger));
   color: white;
 }
 
@@ -647,12 +637,13 @@ watch(
   left: 6px;
   right: 6px;
   border-left: 3px solid;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
   z-index: 100;
   pointer-events: none;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   animation: ghostPulse 1.5s ease-in-out infinite;
+  backdrop-filter: blur(8px);
 }
 
 @keyframes ghostPulse {
@@ -686,7 +677,7 @@ watch(
 
 .ghost-time {
   font-size: 0.65rem;
-  color: #64748b;
+  color: rgb(var(--fg-muted));
   font-weight: 500;
 }
 
@@ -703,11 +694,11 @@ watch(
 .drop-line-dot {
   width: 10px;
   height: 10px;
-  background: #6366f1;
+  background: rgb(var(--accent));
   border-radius: 50%;
   margin-left: 65px;
   flex-shrink: 0;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 4px rgb(var(--accent) / 0.2);
 }
 
 .drop-line {
@@ -715,8 +706,8 @@ watch(
   height: 2px;
   background: repeating-linear-gradient(
     90deg,
-    #6366f1 0px,
-    #6366f1 6px,
+    rgb(var(--accent)) 0px,
+    rgb(var(--accent)) 6px,
     transparent 6px,
     transparent 10px
   );
@@ -725,14 +716,14 @@ watch(
 .drop-line-label {
   position: absolute;
   right: 12px;
-  background: #6366f1;
+  background: rgb(var(--accent));
   color: white;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 0.7rem;
   font-weight: 600;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 2px 8px rgb(var(--accent) / 0.3);
 }
 
 .now-line {
@@ -749,16 +740,16 @@ watch(
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #ef4444;
+  background: rgb(var(--danger));
   margin-left: -5px;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  box-shadow: 0 0 0 3px rgb(var(--danger) / 0.18);
   flex-shrink: 0;
 }
 
 .now-bar {
   flex: 1;
   height: 2px;
-  background: #ef4444;
+  background: rgb(var(--danger));
 }
 
 @media (max-width: 768px) {

@@ -1,32 +1,32 @@
 <template>
   <div class="flex gap-3 justify-start">
-    <div class="flex-shrink-0 h-7 w-7 rounded-full bg-purple-100 text-purple-600 text-[11px] font-semibold flex items-center justify-center select-none">⚙</div>
+    <div class="flex-shrink-0 h-8 w-8 rounded-full bg-info/15 text-info text-[11px] font-bold flex items-center justify-center select-none shadow-sm shadow-info/20">⚙</div>
     <div class="max-w-[80%] w-full">
       <Disclosure v-slot="{ open }" :default-open="defaultOpen">
-        <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div class="glass-card overflow-hidden">
           <DisclosureButton
-            class="w-full flex items-center justify-between gap-3 px-3 py-2 text-sm focus:outline-none hover:bg-gray-50"
+            class="w-full flex items-center justify-between gap-3 px-3 py-2 text-sm focus:outline-none hover:bg-fg-subtle/5 transition-colors"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <span :class="badgeClass" class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">{{ statusLabel }}</span>
-              <span class="font-mono text-[12px] text-gray-700 truncate">{{ toolName }}</span>
+              <span :class="badgeClass" class="badge">{{ statusLabel }}</span>
+              <span class="font-mono text-[12px] text-fg-muted truncate">{{ toolName }}</span>
             </div>
             <svg
-              class="h-4 w-4 text-gray-400 flex-shrink-0 transition-transform"
+              class="h-4 w-4 text-fg-subtle flex-shrink-0 transition-transform"
               :class="open ? 'rotate-180' : ''"
               viewBox="0 0 20 20"
               fill="currentColor"
             ><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/></svg>
           </DisclosureButton>
 
-          <DisclosurePanel class="border-t border-gray-100 bg-gray-50/50 px-3 py-2 space-y-2">
+          <DisclosurePanel class="border-t border-fg-subtle/15 bg-fg-subtle/5 px-3 py-2 space-y-2">
             <div>
-              <div class="text-[10px] uppercase tracking-wide text-gray-500 mb-1">Arguments</div>
-              <pre class="text-[12px] text-gray-700 bg-white border border-gray-200 rounded p-2 overflow-x-auto">{{ formattedArgs }}</pre>
+              <div class="text-[10px] uppercase tracking-wide text-subtle mb-1">Arguments</div>
+              <pre class="text-[12px] text-fg bg-fg-subtle/5 border border-fg-subtle/15 rounded-md p-2 overflow-x-auto">{{ formattedArgs }}</pre>
             </div>
             <div v-if="hasResult">
-              <div class="text-[10px] uppercase tracking-wide text-gray-500 mb-1">Result</div>
-              <pre class="text-[12px] text-gray-700 bg-white border border-gray-200 rounded p-2 overflow-x-auto max-h-48">{{ formattedResult }}</pre>
+              <div class="text-[10px] uppercase tracking-wide text-subtle mb-1">Result</div>
+              <pre class="text-[12px] text-fg bg-fg-subtle/5 border border-fg-subtle/15 rounded-md p-2 overflow-x-auto max-h-48">{{ formattedResult }}</pre>
             </div>
           </DisclosurePanel>
         </div>
@@ -34,17 +34,17 @@
         <div v-if="status === 'pending'" class="flex items-center gap-2 mt-2">
           <button
             type="button"
-            class="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            class="btn btn-primary btn-sm"
             :disabled="busy"
             @click="$emit('approve')"
           >Approve</button>
           <button
             type="button"
-            class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            class="btn btn-secondary btn-sm"
             :disabled="busy"
             @click="$emit('deny')"
           >Deny</button>
-          <span class="text-[11px] text-gray-500">Confirm to let the AI run this tool.</span>
+          <span class="text-[11px] text-subtle">Confirm to let the AI run this tool.</span>
         </div>
       </Disclosure>
     </div>
@@ -67,15 +67,15 @@ const props = defineProps({
 defineEmits(['approve', 'deny'])
 
 const STATUS_BADGES = {
-  pending: 'bg-amber-100 text-amber-800',
-  executing: 'bg-blue-100 text-blue-800',
-  complete: 'bg-green-100 text-green-800',
-  denied: 'bg-gray-200 text-gray-700',
-  error: 'bg-red-100 text-red-800',
-  cancelled: 'bg-gray-200 text-gray-700',
+  pending: 'badge-warning',
+  executing: 'badge-info',
+  complete: 'badge-success',
+  denied: 'badge-neutral',
+  error: 'badge-danger',
+  cancelled: 'badge-neutral',
 }
 
-const badgeClass = computed(() => STATUS_BADGES[props.status] ?? 'bg-gray-100 text-gray-600')
+const badgeClass = computed(() => STATUS_BADGES[props.status] ?? 'badge-neutral')
 const statusLabel = computed(() => props.status)
 
 const hasResult = computed(() => props.result != null)

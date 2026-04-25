@@ -19,10 +19,10 @@ const showEditDialog = ref(false)
 const showDetailsModal = ref(false)
 const sessionToEdit = ref(null)
 const sessionToView = ref(null)
-const expandedSessions = ref(new Set()) // Track which sessions are expanded
+const expandedSessions = ref(new Set())
 
 const selectedDate = ref(dayjs())
-const viewMode = ref('calendar') // 'calendar', 'day', '3days', or 'week'
+const viewMode = ref('calendar')
 const loading = ref(false)
 const datePickerRef = ref(null)
 
@@ -60,7 +60,7 @@ async function loadData() {
   loading.value = true
   try {
     await Promise.all([
-      sessionStore.fetchRecentSessions(100), // Fetch more sessions for daily view
+      sessionStore.fetchRecentSessions(100),
       projectStore.projects.length === 0 ? projectStore.fetchProjects() : Promise.resolve()
     ])
   } catch (error) {
@@ -70,48 +70,37 @@ async function loadData() {
   }
 }
 
-// Get sessions grouped by date
 const sessionsByDate = computed(() => {
   const grouped = {}
   const sessions = sessionStore.recentSessions || []
-
   sessions.forEach(session => {
     const dateKey = dayjs(session.start_time).format('YYYY-MM-DD')
-    if (!grouped[dateKey]) {
-      grouped[dateKey] = []
-    }
+    if (!grouped[dateKey]) grouped[dateKey] = []
     grouped[dateKey].push(session)
   })
-
-  // Sort sessions within each day by start time
   Object.keys(grouped).forEach(dateKey => {
     grouped[dateKey].sort((a, b) =>
       dayjs(a.start_time).valueOf() - dayjs(b.start_time).valueOf()
     )
   })
-
   return grouped
 })
 
-// Get sessions for calendar view (single day)
 const calendarSessions = computed(() => {
   const dateKey = selectedDate.value.format('YYYY-MM-DD')
   return sessionsByDate.value[dateKey] || []
 })
 
-// Get dates to display based on view mode
 const displayDates = computed(() => {
   if (viewMode.value === 'calendar' || viewMode.value === 'day') {
     return [selectedDate.value]
   } else if (viewMode.value === '3days') {
-    // Show 3 days centered on selected date
     return [
       selectedDate.value.subtract(1, 'day'),
       selectedDate.value,
       selectedDate.value.add(1, 'day')
     ]
   } else {
-    // Show week view (7 days)
     const startOfWeek = selectedDate.value.startOf('isoWeek')
     return Array.from({ length: 7 }, (_, i) => startOfWeek.add(i, 'day'))
   }
@@ -137,13 +126,8 @@ function nextPeriod() {
   }
 }
 
-function goToToday() {
-  selectedDate.value = dayjs()
-}
-
-function openStartDialog() {
-  showStartDialog.value = true
-}
+function goToToday() { selectedDate.value = dayjs() }
+function openStartDialog() { showStartDialog.value = true }
 
 function handleSessionStarted() {
   showStartDialog.value = false
@@ -180,14 +164,11 @@ async function handleDetailsDelete(session) {
 
 async function handleUpdateTimes(data) {
   try {
-    // Update session with the new times
     await sessionStore.updateSession(data.sessionId, {
       start_time: data.start_time,
       end_time: data.end_time
     })
-    // Refresh the data to show updated times
     await loadData()
-    // Update the modal view with fresh data
     if (sessionToView.value) {
       sessionToView.value = await sessionStore.getSession(data.sessionId)
     }
@@ -220,9 +201,7 @@ function formatDuration(minutes) {
 }
 
 function getSessionDuration(session) {
-  if (session.actual_duration) {
-    return session.actual_duration
-  }
+  if (session.actual_duration) return session.actual_duration
   if (session.end_time) {
     const start = dayjs(session.start_time)
     const end = dayjs(session.end_time)
@@ -232,22 +211,18 @@ function getSessionDuration(session) {
 }
 
 function getSessionStatus(session) {
-  if (!session.end_time) {
-    return 'active'
-  }
+  if (!session.end_time) return 'active'
   const duration = getSessionDuration(session)
-  if (duration > session.planned_duration) {
-    return 'overtime'
-  }
+  if (duration > session.planned_duration) return 'overtime'
   return 'completed'
 }
 
 function getStatusColor(status) {
   switch (status) {
-    case 'active': return '#10b981'
-    case 'overtime': return '#f59e0b'
-    case 'completed': return '#6b7280'
-    default: return '#6b7280'
+    case 'active': return 'rgb(var(--success))'
+    case 'overtime': return 'rgb(var(--warning))'
+    case 'completed': return 'rgb(var(--fg-subtle))'
+    default: return 'rgb(var(--fg-subtle))'
   }
 }
 
@@ -256,20 +231,7 @@ function getDayStats(dateKey) {
   const totalPlanned = sessions.reduce((sum, s) => sum + s.planned_duration, 0)
   const totalActual = sessions.reduce((sum, s) => sum + getSessionDuration(s), 0)
   const completed = sessions.filter(s => s.end_time).length
-
-  return {
-    total: sessions.length,
-    completed,
-    active: sessions.length - completed,
-    totalPlanned,
-    totalActual
-  }
-}
-
-function getSatisfactionClass(score) {
-  if (score >= 80) return 'satisfaction-high'
-  if (score >= 60) return 'satisfaction-medium'
-  return 'satisfaction-low'
+  return { total: sessions.length, completed, active: sessions.length - completed, totalPlanned, totalActual }
 }
 
 function toggleSessionExpansion(sessionId) {
@@ -278,7 +240,6 @@ function toggleSessionExpansion(sessionId) {
   } else {
     expandedSessions.value.add(sessionId)
   }
-  // Force reactivity update
   expandedSessions.value = new Set(expandedSessions.value)
 }
 
@@ -292,93 +253,98 @@ function hasTasksOrNotes(session) {
 </script>
 
 <template>
-  <div class="sessions-daily-page">
+  <div class="p-6 max-w-[1400px] mx-auto space-y-5">
     <!-- Header -->
-    <div class="page-header">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
       <h1 class="page-title">Sessions</h1>
 
-      <div class="header-actions">
+      <div class="flex items-center gap-3 flex-wrap">
         <!-- View Mode Toggle -->
-        <div class="view-toggle">
+        <div class="glass-inset p-1 inline-flex gap-0.5">
           <button
-            :class="['toggle-btn', { active: viewMode === 'calendar' }]"
-            @click="viewMode = 'calendar'"
+            v-for="mode in [
+              { id: 'calendar', label: 'Calendar' },
+              { id: 'day', label: 'Day' },
+              { id: '3days', label: '3 Days' },
+              { id: 'week', label: 'Week' },
+            ]"
+            :key="mode.id"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150"
+            :class="viewMode === mode.id
+              ? 'bg-accent text-white shadow-sm shadow-accent/30'
+              : 'text-fg-muted hover:text-fg'"
+            @click="viewMode = mode.id"
           >
-            📅 Calendar
-          </button>
-          <button
-            :class="['toggle-btn', { active: viewMode === 'day' }]"
-            @click="viewMode = 'day'"
-          >
-            Day
-          </button>
-          <button
-            :class="['toggle-btn', { active: viewMode === '3days' }]"
-            @click="viewMode = '3days'"
-          >
-            3 Days
-          </button>
-          <button
-            :class="['toggle-btn', { active: viewMode === 'week' }]"
-            @click="viewMode = 'week'"
-          >
-            Week
+            {{ mode.label }}
           </button>
         </div>
 
         <!-- Navigation -->
-        <div class="date-navigation">
-          <button @click="previousPeriod" class="nav-btn" title="Previous">‹</button>
+        <div class="flex items-center gap-1.5">
+          <button @click="previousPeriod" class="icon-btn" title="Previous">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
           <button
             type="button"
-            class="date-pill"
+            class="relative inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-fg-subtle/20 bg-white/30 dark:bg-white/5 hover:border-accent/40 hover:bg-accent/5 transition-all min-w-[200px] justify-center text-sm font-semibold text-fg"
             @click="openDatePicker"
-            :title="'Click to pick a date'"
+            title="Click to pick a date"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" class="text-accent">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="16" y1="2" x2="16" y2="6"></line>
               <line x1="8" y1="2" x2="8" y2="6"></line>
               <line x1="3" y1="10" x2="21" y2="10"></line>
             </svg>
-            <span class="date-pill-label">{{ headerDateLabel }}</span>
+            <span class="whitespace-nowrap">{{ headerDateLabel }}</span>
             <input
               ref="datePickerRef"
               v-model="selectedDateISO"
               type="date"
-              class="date-pill-native"
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer pointer-events-none"
               aria-label="Pick a date"
             />
           </button>
-          <button @click="goToToday" class="today-btn" :disabled="selectedDate.isSame(dayjs(), 'day')">Today</button>
-          <button @click="nextPeriod" class="nav-btn" title="Next">›</button>
+          <button
+            @click="goToToday"
+            :disabled="selectedDate.isSame(dayjs(), 'day')"
+            class="btn btn-secondary btn-sm !text-accent"
+          >Today</button>
+          <button @click="nextPeriod" class="icon-btn" title="Next">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
         </div>
 
-        <!-- Link to list view -->
-        <router-link to="/sessions/list" class="list-view-link">
+        <router-link to="/sessions/list" class="btn btn-secondary btn-sm">
           List View
         </router-link>
 
-        <!-- Start Session Button -->
         <button
           @click="openStartDialog"
           :disabled="activeSession !== null"
-          class="start-session-btn"
+          class="btn btn-success"
           :title="activeSession ? 'A session is already active' : 'Start a new session'"
         >
-          {{ activeSession ? 'Session Active' : '+ Start Session' }}
+          <svg v-if="!activeSession" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          {{ activeSession ? 'Session Active' : 'Start Session' }}
         </button>
       </div>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+    <!-- Loading -->
+    <div v-if="loading" class="glass-card flex flex-col items-center justify-center py-16 px-6 text-muted">
+      <div class="spinner mb-4"></div>
       <p>Loading sessions...</p>
     </div>
 
     <!-- Calendar View -->
-    <div v-else-if="viewMode === 'calendar'" class="calendar-view">
+    <div v-else-if="viewMode === 'calendar'">
       <SessionCalendarDay
         :date="selectedDate"
         :sessions="calendarSessions"
@@ -390,133 +356,123 @@ function hasTasksOrNotes(session) {
     </div>
 
     <!-- Sessions Grid -->
-    <div v-else class="sessions-grid">
+    <div v-else class="grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
       <div
         v-for="date in displayDates"
         :key="date.format('YYYY-MM-DD')"
-        class="day-column"
+        class="flex flex-col min-h-[400px] glass-card overflow-hidden"
       >
-        <!-- Day Header -->
-        <div class="day-header" :class="{ today: date.isSame(dayjs(), 'day') }">
-          <div class="day-name">{{ date.format('ddd') }}</div>
-          <div class="day-date">{{ date.format('MMM D') }}</div>
+        <div
+          class="p-4 border-b border-fg-subtle/15"
+          :class="date.isSame(dayjs(), 'day') ? 'bg-accent/10' : ''"
+        >
+          <div class="text-xs font-semibold uppercase tracking-wide text-muted">{{ date.format('ddd') }}</div>
+          <div class="text-base font-bold text-fg mt-0.5">{{ date.format('MMM D') }}</div>
 
-          <!-- Day Stats -->
-          <div v-if="sessionsByDate[date.format('YYYY-MM-DD')]" class="day-stats">
-            <span class="stat-item">
-              {{ getDayStats(date.format('YYYY-MM-DD')).total }} sessions
-            </span>
-            <span class="stat-item">
-              {{ formatDuration(getDayStats(date.format('YYYY-MM-DD')).totalActual) }}
-            </span>
+          <div v-if="sessionsByDate[date.format('YYYY-MM-DD')]" class="mt-2 flex flex-col gap-0.5">
+            <span class="text-xs text-subtle">{{ getDayStats(date.format('YYYY-MM-DD')).total }} sessions</span>
+            <span class="text-xs text-subtle">{{ formatDuration(getDayStats(date.format('YYYY-MM-DD')).totalActual) }}</span>
           </div>
         </div>
 
-        <!-- Sessions List -->
-        <div class="sessions-list">
+        <div class="flex-1 p-2 overflow-y-auto max-h-[600px] space-y-1.5">
           <div
             v-for="session in sessionsByDate[date.format('YYYY-MM-DD')] || []"
             :key="session.id"
-            class="session-card"
+            class="group relative glass-row p-2 border-l-[3px] hover:bg-fg-subtle/10 cursor-pointer"
             :style="{ borderLeftColor: getStatusColor(getSessionStatus(session)) }"
+            @click="openDetailsModal(session)"
           >
-            <!-- Main compact row -->
-            <div class="session-main-row">
-              <div class="session-left">
-                <div class="session-project" v-if="session.project">
-                  <span class="project-dot" :style="{ backgroundColor: session.project.color }"></span>
-                  <span class="project-name">{{ session.project.name }}</span>
-                  <span v-if="session.satisfaction_score && session.satisfaction_score > 0" class="satisfaction-inline">
+            <div class="flex items-center justify-between gap-2 relative">
+              <div class="flex-1 min-w-0">
+                <div v-if="session.project" class="flex items-center gap-1.5 text-sm font-semibold text-fg">
+                  <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" :style="{ backgroundColor: session.project.color }"></span>
+                  <span class="truncate">{{ session.project.name }}</span>
+                  <span v-if="session.satisfaction_score && session.satisfaction_score > 0" class="text-[11px] text-subtle font-normal ml-0.5">
                     ({{ session.satisfaction_score }}/100)
                   </span>
                 </div>
-                <div v-else class="session-project no-project">
-                  <span class="project-name">No Project</span>
-                  <span v-if="session.satisfaction_score && session.satisfaction_score > 0" class="satisfaction-inline">
+                <div v-else class="flex items-center gap-1.5 text-sm font-medium italic text-fg-subtle">
+                  <span class="truncate">No Project</span>
+                  <span v-if="session.satisfaction_score && session.satisfaction_score > 0" class="text-[11px] font-normal ml-0.5">
                     ({{ session.satisfaction_score }}/100)
                   </span>
                 </div>
               </div>
 
-              <div class="session-right">
-                <div class="session-time-info">
-                  <span class="start-time">{{ dayjs(session.start_time).format('HH:mm') }}</span>
-                  <span class="separator">·</span>
-                  <span class="duration-info">
-                    <span v-if="session.end_time" class="actual-duration">
-                      {{ formatDuration(getSessionDuration(session)) }}
-                    </span>
-                    <span v-else class="active-status">Active</span>
-                    <span class="planned-duration">({{ formatDuration(session.planned_duration) }})</span>
-                  </span>
-                </div>
+              <div class="flex items-center gap-1 text-xs flex-shrink-0">
+                <span class="font-semibold text-muted">{{ dayjs(session.start_time).format('HH:mm') }}</span>
+                <span class="text-fg-subtle">·</span>
+                <span class="flex items-center gap-1">
+                  <span v-if="session.end_time" class="font-semibold text-success">{{ formatDuration(getSessionDuration(session)) }}</span>
+                  <span v-else class="font-semibold text-success">Active</span>
+                  <span class="text-subtle text-[11px]">({{ formatDuration(session.planned_duration) }})</span>
+                </span>
               </div>
 
-              <!-- Actions - show on hover -->
-              <div class="session-actions-compact">
-                <button @click.stop="openEditDialog(session)" class="action-btn-compact edit" title="Edit">✎</button>
-                <button @click.stop="handleDeleteSession(session)" class="action-btn-compact delete" title="Delete">×</button>
+              <div class="absolute right-0 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm pl-2 rounded">
+                <button
+                  @click.stop="openEditDialog(session)"
+                  class="w-6 h-6 rounded border border-fg-subtle/20 bg-white/80 dark:bg-slate-800/80 text-fg-muted hover:bg-accent hover:text-white hover:border-accent flex items-center justify-center text-xs transition-colors"
+                  title="Edit"
+                >✎</button>
+                <button
+                  @click.stop="handleDeleteSession(session)"
+                  class="w-6 h-6 rounded border border-fg-subtle/20 bg-white/80 dark:bg-slate-800/80 text-fg-muted hover:bg-danger hover:text-white hover:border-danger flex items-center justify-center text-xs transition-colors"
+                  title="Delete"
+                >×</button>
               </div>
             </div>
 
-            <!-- Second row - optional metadata -->
-            <div v-if="(session.tags && session.tags.length > 0) || hasTasksOrNotes(session)" class="session-meta-row">
-              <!-- Tags -->
-              <div v-if="session.tags && session.tags.length > 0" class="session-tags-compact">
+            <div v-if="(session.tags && session.tags.length > 0) || hasTasksOrNotes(session)" class="flex items-center gap-2 mt-1.5 flex-wrap">
+              <div v-if="session.tags && session.tags.length > 0" class="flex items-center gap-1 flex-1">
                 <span
                   v-for="tag in session.tags.slice(0, 2)"
                   :key="tag.id"
-                  class="tag-chip-compact"
+                  class="text-[10px] px-1.5 py-0.5 rounded font-medium"
                   :style="{ backgroundColor: tag.color + '30', color: tag.color }"
-                >
-                  {{ tag.name }}
-                </span>
-                <span v-if="session.tags.length > 2" class="more-tags-compact">
-                  +{{ session.tags.length - 2 }}
-                </span>
+                >{{ tag.name }}</span>
+                <span v-if="session.tags.length > 2" class="text-[10px] text-fg-subtle">+{{ session.tags.length - 2 }}</span>
               </div>
-
-              <!-- Expand toggle for tasks/notes -->
               <button
                 v-if="hasTasksOrNotes(session)"
                 @click.stop="toggleSessionExpansion(session.id)"
-                class="expand-toggle-compact"
+                class="text-fg-subtle hover:text-fg p-0.5 transition-colors"
                 :title="isSessionExpanded(session.id) ? 'Hide details' : 'Show details'"
               >
-                <span class="toggle-icon-compact" :class="{ expanded: isSessionExpanded(session.id) }">▼</span>
+                <span
+                  class="inline-block text-[10px] transition-transform"
+                  :class="{ 'rotate-180': isSessionExpanded(session.id) }"
+                >▼</span>
               </button>
             </div>
 
-            <!-- Expandable details -->
-            <div v-if="isSessionExpanded(session.id)" class="session-details-compact">
-              <div v-if="session.tasks_done && session.tasks_done.trim()" class="detail-item">
-                <span class="detail-icon">✓</span>
-                <span class="detail-text">{{ session.tasks_done }}</span>
+            <div v-if="isSessionExpanded(session.id)" class="mt-2 p-2 rounded glass-inset space-y-1.5">
+              <div v-if="session.tasks_done && session.tasks_done.trim()" class="flex gap-1.5 text-[11px] leading-snug">
+                <span class="text-success flex-shrink-0">✓</span>
+                <span class="text-muted whitespace-pre-wrap break-words">{{ session.tasks_done }}</span>
               </div>
-              <div v-if="session.notes && session.notes.trim()" class="detail-item">
-                <span class="detail-icon">📝</span>
-                <span class="detail-text">{{ session.notes }}</span>
+              <div v-if="session.notes && session.notes.trim()" class="flex gap-1.5 text-[11px] leading-snug">
+                <span class="text-info flex-shrink-0">📝</span>
+                <span class="text-muted whitespace-pre-wrap break-words">{{ session.notes }}</span>
               </div>
             </div>
           </div>
 
-          <!-- Empty State -->
-          <div v-if="!sessionsByDate[date.format('YYYY-MM-DD')]" class="empty-day">
-            <span class="empty-icon">📭</span>
-            <span class="empty-text">No sessions</span>
+          <div v-if="!sessionsByDate[date.format('YYYY-MM-DD')]" class="flex flex-col items-center justify-center py-12 px-4 text-fg-subtle">
+            <span class="text-2xl mb-2">📭</span>
+            <span class="text-sm">No sessions</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Start Session Dialog -->
     <StartSessionDialog
       v-if="showStartDialog"
       @close="showStartDialog = false"
       @started="handleSessionStarted"
     />
 
-    <!-- Edit Session Dialog -->
     <EditSessionDialog
       v-if="showEditDialog"
       :session="sessionToEdit"
@@ -524,7 +480,6 @@ function hasTasksOrNotes(session) {
       @saved="handleSessionUpdated"
     />
 
-    <!-- Session Details Modal -->
     <SessionDetailsModal
       v-if="showDetailsModal"
       :session="sessionToView"
@@ -535,523 +490,3 @@ function hasTasksOrNotes(session) {
     />
   </div>
 </template>
-
-<style scoped>
-.sessions-daily-page {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.view-toggle {
-  display: flex;
-  background-color: #f3f4f6;
-  border-radius: 6px;
-  padding: 0.25rem;
-}
-
-.toggle-btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  color: #6b7280;
-  transition: all 0.2s;
-}
-
-.toggle-btn.active {
-  background-color: white;
-  color: #10b981;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.date-navigation {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.nav-btn,
-.today-btn {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  background: white;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  color: #374151;
-  transition: all 0.2s;
-}
-
-.nav-btn {
-  font-size: 1.25rem;
-}
-
-.nav-btn:hover,
-.today-btn:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  border-color: #10b981;
-}
-
-.today-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.date-pill {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  border: 1px solid #d1d5db;
-  background: white;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: #1f2937;
-  transition: all 0.2s;
-  min-width: 200px;
-  justify-content: center;
-}
-
-.date-pill:hover {
-  border-color: #10b981;
-  color: #059669;
-  background: #f0fdf4;
-}
-
-.date-pill svg {
-  color: #10b981;
-  flex-shrink: 0;
-}
-
-.date-pill-label {
-  white-space: nowrap;
-}
-
-.date-pill-native {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  border: none;
-  padding: 0;
-  font: inherit;
-  pointer-events: none;
-}
-
-.list-view-link {
-  padding: 0.5rem 1rem;
-  background-color: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.list-view-link:hover {
-  background-color: #e5e7eb;
-  border-color: #10b981;
-}
-
-.start-session-btn {
-  padding: 0.5rem 1rem;
-  background-color: #10b981;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.start-session-btn:hover:not(:disabled) {
-  background-color: #059669;
-}
-
-.start-session-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem;
-  color: #6b7280;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f4f6;
-  border-top-color: #10b981;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.calendar-view {
-  margin-bottom: 2rem;
-}
-
-.sessions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-}
-
-.day-column {
-  display: flex;
-  flex-direction: column;
-  min-height: 400px;
-}
-
-.day-header {
-  background-color: #f9fafb;
-  padding: 1rem;
-  border-radius: 8px 8px 0 0;
-  border: 1px solid #e5e7eb;
-  border-bottom: none;
-}
-
-.day-header.today {
-  background-color: #ecfdf5;
-  border-color: #10b981;
-}
-
-.day-name {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-}
-
-.day-date {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin-top: 0.25rem;
-}
-
-.day-stats {
-  margin-top: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.stat-item {
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.sessions-list {
-  flex: 1;
-  background-color: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0 0 8px 8px;
-  padding: 0.5rem;
-  overflow-y: auto;
-  max-height: 600px;
-}
-
-/* Compact Session Card */
-.session-card {
-  background-color: white;
-  border: 1px solid #e5e7eb;
-  border-left: 3px solid;
-  border-radius: 4px;
-  padding: 0.5rem;
-  margin-bottom: 0.375rem;
-  transition: all 0.2s;
-  position: relative;
-}
-
-.session-card:hover {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  border-left-width: 4px;
-}
-
-/* Main Row - Project and Time */
-.session-main-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  position: relative;
-}
-
-.session-left {
-  flex: 1;
-  min-width: 0;
-}
-
-.session-project {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.session-project.no-project {
-  color: #9ca3af;
-  font-style: italic;
-  font-weight: 500;
-}
-
-.project-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.project-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.satisfaction-inline {
-  font-size: 0.7rem;
-  color: #9ca3af;
-  font-weight: 500;
-  margin-left: 0.25rem;
-}
-
-.session-right {
-  flex-shrink: 0;
-}
-
-.session-time-info {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-}
-
-.start-time {
-  font-weight: 600;
-  color: #374151;
-}
-
-.separator {
-  color: #d1d5db;
-}
-
-.duration-info {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: #6b7280;
-}
-
-.actual-duration {
-  font-weight: 600;
-  color: #059669;
-}
-
-.active-status {
-  font-weight: 600;
-  color: #10b981;
-}
-
-.planned-duration {
-  color: #9ca3af;
-  font-size: 0.7rem;
-}
-
-/* Compact Actions - Show on Hover */
-.session-actions-compact {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  gap: 0.25rem;
-  opacity: 0;
-  transition: opacity 0.2s;
-  background: white;
-  padding-left: 0.5rem;
-}
-
-.session-card:hover .session-actions-compact {
-  opacity: 1;
-}
-
-.action-btn-compact {
-  width: 24px;
-  height: 24px;
-  border: 1px solid #d1d5db;
-  background: white;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.action-btn-compact.edit:hover {
-  background-color: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
-}
-
-.action-btn-compact.delete:hover {
-  background-color: #ef4444;
-  color: white;
-  border-color: #ef4444;
-}
-
-/* Meta Row - Tags, Satisfaction, Expand */
-.session-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.375rem;
-  flex-wrap: wrap;
-}
-
-.session-tags-compact {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  flex: 1;
-}
-
-.tag-chip-compact {
-  font-size: 0.65rem;
-  padding: 0.125rem 0.375rem;
-  border-radius: 3px;
-  font-weight: 500;
-}
-
-.more-tags-compact {
-  font-size: 0.65rem;
-  color: #9ca3af;
-}
-
-.expand-toggle-compact {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.125rem 0.25rem;
-  color: #9ca3af;
-  transition: color 0.2s;
-}
-
-.expand-toggle-compact:hover {
-  color: #374151;
-}
-
-.toggle-icon-compact {
-  font-size: 0.625rem;
-  transition: transform 0.2s;
-  display: inline-block;
-}
-
-.toggle-icon-compact.expanded {
-  transform: rotate(180deg);
-}
-
-/* Compact Details */
-.session-details-compact {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background-color: #f9fafb;
-  border-radius: 3px;
-  border: 1px solid #e5e7eb;
-  animation: slideDown 0.2s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.detail-item {
-  display: flex;
-  gap: 0.375rem;
-  margin-bottom: 0.375rem;
-  font-size: 0.7rem;
-  line-height: 1.4;
-}
-
-.detail-item:last-child {
-  margin-bottom: 0;
-}
-
-.detail-icon {
-  flex-shrink: 0;
-}
-
-.detail-text {
-  color: #6b7280;
-  flex: 1;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-.empty-day {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 1rem;
-  color: #9ca3af;
-}
-
-.empty-icon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.empty-text {
-  font-size: 0.875rem;
-}
-</style>

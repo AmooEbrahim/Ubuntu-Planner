@@ -1,31 +1,39 @@
 <template>
   <form
-    class="flex items-end gap-2 border-t border-gray-200 bg-white px-3 py-3"
+    class="flex-shrink-0 px-4 py-3"
     @submit.prevent="onSubmit"
   >
-    <textarea
-      ref="textareaEl"
-      v-model="draft"
-      :placeholder="placeholder"
-      :disabled="disabled"
-      rows="1"
-      class="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 max-h-40"
-      @keydown.enter.exact.prevent="onSubmit"
-      @keydown.shift.enter.exact="(e) => { /* allow newline */ }"
-      @input="autoResize"
-    />
-    <button
-      v-if="streaming"
-      type="button"
-      class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-      @click="$emit('cancel')"
-    >Stop</button>
-    <button
-      v-else
-      type="submit"
-      :disabled="disabled || !draft.trim()"
-      class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-    >Send</button>
+    <div class="max-w-3xl mx-auto flex items-end gap-2">
+      <textarea
+        ref="textareaEl"
+        v-model="draft"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        rows="1"
+        class="input flex-1 resize-none max-h-40 text-base"
+        @keydown.enter.exact.prevent="onSubmit"
+        @keydown.shift.enter.exact="(e) => { /* allow newline */ }"
+        @input="autoResize"
+      />
+      <button
+        v-if="streaming"
+        type="button"
+        class="btn btn-danger"
+        @click="$emit('cancel')"
+      >Stop</button>
+      <button
+        v-else
+        type="submit"
+        :disabled="disabled || !draft.trim()"
+        class="btn btn-primary"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+        Send
+      </button>
+    </div>
   </form>
 </template>
 
@@ -58,4 +66,8 @@ const onSubmit = () => {
   draft.value = ''
   nextTick(autoResize)
 }
+
+defineExpose({
+  focus: () => textareaEl.value?.focus(),
+})
 </script>

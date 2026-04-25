@@ -37,13 +37,28 @@ export const useChatStore = defineStore('chat', {
       this.error = null
       try {
         const res = await api.get(`/api/chat/${id}`)
-        this.detailById[id] = res.data
+        const data = res.data
+        // Preserve in-memory suggested_replies set by the live stream when the
+        // backend response (race with the DB write) doesn't include them.
+        const existing = this.detailById[id]
+        if (existing && Array.isArray(existing.messages) && Array.isArray(data.messages)) {
+          const memById = new Map(existing.messages.map((m) => [m.id, m]))
+          data.messages = data.messages.map((m) => {
+            const mem = memById.get(m.id)
+            if (mem && Array.isArray(mem.suggested_replies) && mem.suggested_replies.length
+                && (!m.suggested_replies || (Array.isArray(m.suggested_replies) && m.suggested_replies.length === 0))) {
+              return { ...m, suggested_replies: mem.suggested_replies }
+            }
+            return m
+          })
+        }
+        this.detailById[id] = data
         const idx = this.chats.findIndex((c) => c.id === id)
         if (idx !== -1) {
-          const { messages, permissions, system_prompt_override, model_override, ...summary } = res.data
+          const { messages, permissions, system_prompt_override, model_override, ...summary } = data
           this.chats[idx] = summary
         }
-        return res.data
+        return data
       } catch (err) {
         this.error = err.response?.data?.detail || err.message
         throw err

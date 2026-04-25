@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePlanningStore } from '@/stores/planning'
 import { useProjectStore } from '@/stores/projects'
 import TagMultiSelect from '@/components/TagMultiSelect.vue'
@@ -102,8 +102,6 @@ const durationMinutes = computed(() => {
   return diff > 0 ? diff : 0
 })
 
-const formattedStartTime = computed(() => startTimeObj.value.format('h:mm A'))
-const formattedEndTime = computed(() => endTimeObj.value.format('h:mm A'))
 const formattedDuration = computed(() => {
   const m = durationMinutes.value
   if (m < 60) return `${m}m`
@@ -208,19 +206,24 @@ onMounted(async () => {
   }
   document.addEventListener('click', handleClickOutside)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
   <div class="modal-overlay" @click.self="handleCancel" @keydown.escape="handleCancel">
-    <div class="modal-container">
-      <div class="modal-header">
-        <div class="header-content">
-          <div class="header-icon" :style="{ backgroundColor: isEdit ? '#f1f5f9' : '#eef2ff' }">
-            <svg v-if="isEdit" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" width="20" height="20">
+    <div class="glass-panel w-full max-w-xl max-h-[90vh] flex flex-col">
+      <!-- Header -->
+      <div class="flex justify-between items-center p-6 pb-4 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-accent/15 text-accent">
+            <svg v-if="isEdit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
             </svg>
-            <svg v-else viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" width="20" height="20">
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="16" y1="2" x2="16" y2="6"></line>
               <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -228,20 +231,20 @@ onMounted(async () => {
             </svg>
           </div>
           <div>
-            <h2 class="modal-title">{{ isEdit ? 'Edit Planning' : 'Schedule Work' }}</h2>
-            <p class="modal-subtitle">{{ isEdit ? 'Update your scheduled work' : 'Plan when you\'ll work on this' }}</p>
+            <h2 class="text-lg font-bold text-fg">{{ isEdit ? 'Edit Planning' : 'Schedule Work' }}</h2>
+            <p class="text-xs text-muted mt-0.5">{{ isEdit ? 'Update your scheduled work' : "Plan when you'll work on this" }}</p>
           </div>
         </div>
-        <button @click="handleCancel" class="close-btn" title="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+        <button @click="handleCancel" class="icon-btn" title="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
       </div>
 
-      <div v-if="error" class="error-banner">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+      <div v-if="error" class="mx-6 mb-4 flex items-center gap-2 px-3 py-2 rounded-xl border border-danger/30 bg-danger/10 text-danger text-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="flex-shrink-0">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="8" x2="12" y2="12"></line>
           <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -249,57 +252,71 @@ onMounted(async () => {
         <span>{{ error }}</span>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="modal-body">
-        <div class="body-scroll">
-          <div class="form-section">
-            <label class="section-label">Project</label>
-            <div ref="projectDropdownRef" class="project-select" @click="openProjectDropdown">
-              <div v-if="!selectedProject" class="project-placeholder">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+      <form @submit.prevent="handleSubmit" class="flex flex-col flex-1 min-h-0 px-6 pb-6">
+        <div class="flex-1 min-h-0 overflow-y-auto space-y-5">
+          <!-- Project select -->
+          <div>
+            <label class="label">Project</label>
+            <div ref="projectDropdownRef" class="relative cursor-pointer" @click="openProjectDropdown">
+              <div
+                v-if="!selectedProject"
+                class="input flex items-center gap-2.5 text-subtle"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
-                <span>Select a project</span>
+                <span class="flex-1">Select a project</span>
               </div>
-              <div v-else class="project-selected">
-                <div class="project-dot" :style="{ backgroundColor: selectedProject.color }"></div>
-                <span class="project-name">{{ selectedProject.name }}</span>
-                <button type="button" @click.stop="clearProject" class="project-clear" title="Clear">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <div
+                v-else
+                class="input flex items-center gap-2.5"
+              >
+                <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ backgroundColor: selectedProject.color }"></div>
+                <span class="flex-1 truncate text-fg">{{ selectedProject.name }}</span>
+                <button type="button" @click.stop="clearProject" class="text-fg-subtle hover:text-fg" title="Clear">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
                 </button>
               </div>
-              <svg class="project-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <svg class="absolute right-3 top-1/2 -translate-y-1/2 text-fg-subtle pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>
 
               <Transition name="dropdown">
-                <div v-if="projectDropdownOpen" class="project-dropdown" @click.stop>
-                  <div class="project-search">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <div
+                  v-if="projectDropdownOpen"
+                  class="glass-panel absolute top-[calc(100%+6px)] left-0 right-0 z-50 overflow-hidden"
+                  @click.stop
+                >
+                  <div class="flex items-center gap-2 px-3 py-2.5 border-b border-fg-subtle/15">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" class="text-fg-subtle flex-shrink-0">
                       <circle cx="11" cy="11" r="8"></circle>
                       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                     <input
                       v-model="projectSearch"
-                      class="project-search-input"
+                      class="project-search-input flex-1 bg-transparent border-0 outline-none text-sm text-fg placeholder:text-fg-subtle"
                       placeholder="Search projects..."
                       @click.stop
                     >
                   </div>
-                  <div class="project-list">
+                  <div class="max-h-48 overflow-y-auto p-1.5">
                     <button
                       v-for="p in filteredProjects"
                       :key="p.id"
                       type="button"
-                      :class="['project-option', { active: formData.project_id === p.id }]"
+                      class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-left transition-colors"
+                      :class="formData.project_id === p.id
+                        ? 'bg-accent/15 text-accent'
+                        : 'text-fg hover:bg-fg-subtle/10'"
                       @click="selectProject(p.id)"
                     >
-                      <div class="project-dot" :style="{ backgroundColor: p.color }"></div>
-                      <span>{{ projectStore.getProjectPath(p.id) }}</span>
+                      <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ backgroundColor: p.color }"></div>
+                      <span class="truncate">{{ projectStore.getProjectPath(p.id) }}</span>
                     </button>
-                    <div v-if="filteredProjects.length === 0" class="project-empty">
+                    <div v-if="filteredProjects.length === 0" class="p-3 text-center text-sm text-subtle">
                       No projects found
                     </div>
                   </div>
@@ -308,20 +325,21 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="form-section">
-            <label class="section-label">Time</label>
+          <!-- Time -->
+          <div>
+            <label class="label">Time</label>
 
-            <div class="time-row">
-              <div class="time-field">
-                <span class="time-field-label">Start</span>
-                <div class="time-inputs">
-                  <select v-model.number="startHour" class="time-select" @change="onStartTimeChange">
+            <div class="flex items-end gap-3">
+              <div class="flex-1 flex flex-col gap-1.5">
+                <span class="text-xs text-subtle font-medium">Start</span>
+                <div class="flex items-center gap-1">
+                  <select v-model.number="startHour" class="input text-center text-lg font-semibold flex-1 px-2" @change="onStartTimeChange">
                     <option v-for="h in hourOptions" :key="h" :value="h">
                       {{ String(h).padStart(2, '0') }}
                     </option>
                   </select>
-                  <span class="time-sep">:</span>
-                  <select v-model.number="startMinute" class="time-select" @change="onStartTimeChange">
+                  <span class="text-2xl font-bold text-fg-subtle">:</span>
+                  <select v-model.number="startMinute" class="input text-center text-lg font-semibold flex-1 px-2" @change="onStartTimeChange">
                     <option v-for="m in minuteOptions" :key="m" :value="m">
                       {{ String(m).padStart(2, '0') }}
                     </option>
@@ -329,23 +347,23 @@ onMounted(async () => {
                 </div>
               </div>
 
-              <div class="time-arrow">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <div class="flex items-center justify-center text-fg-subtle pb-3 flex-shrink-0 hidden sm:flex">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                   <polyline points="12 5 19 12 12 19"></polyline>
                 </svg>
               </div>
 
-              <div class="time-field">
-                <span class="time-field-label">End</span>
-                <div class="time-inputs">
-                  <select v-model.number="endHour" class="time-select">
+              <div class="flex-1 flex flex-col gap-1.5">
+                <span class="text-xs text-subtle font-medium">End</span>
+                <div class="flex items-center gap-1">
+                  <select v-model.number="endHour" class="input text-center text-lg font-semibold flex-1 px-2">
                     <option v-for="h in hourOptions" :key="h" :value="h">
                       {{ String(h).padStart(2, '0') }}
                     </option>
                   </select>
-                  <span class="time-sep">:</span>
-                  <select v-model.number="endMinute" class="time-select">
+                  <span class="text-2xl font-bold text-fg-subtle">:</span>
+                  <select v-model.number="endMinute" class="input text-center text-lg font-semibold flex-1 px-2">
                     <option v-for="m in minuteOptions" :key="m" :value="m">
                       {{ String(m).padStart(2, '0') }}
                     </option>
@@ -354,17 +372,20 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div class="duration-bar">
-              <span class="duration-label">Duration</span>
-              <span class="duration-value" :style="{ color: selectedProject?.color || '#6366f1' }">{{ formattedDuration }}</span>
+            <div class="flex items-center justify-between mt-3 px-4 py-2.5 rounded-xl glass-inset">
+              <span class="text-sm text-muted">Duration</span>
+              <span class="text-base font-bold" :style="{ color: selectedProject?.color || 'rgb(var(--accent))' }">{{ formattedDuration }}</span>
             </div>
 
-            <div class="duration-presets">
+            <div class="flex flex-wrap gap-1.5 mt-3">
               <button
                 v-for="m in durationPresets"
                 :key="m"
                 type="button"
-                :class="['preset-btn', { active: durationMinutes === m }]"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150"
+                :class="durationMinutes === m
+                  ? 'bg-accent border-accent text-white'
+                  : 'bg-transparent border-fg-subtle/20 text-fg-muted hover:border-accent/50 hover:text-accent'"
                 @click="setDuration(m)"
               >
                 {{ formatDurationLabel(m) }}
@@ -372,35 +393,45 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="form-section">
-            <label class="section-label">Priority</label>
-            <div class="priority-buttons">
+          <!-- Priority -->
+          <div>
+            <label class="label">Priority</label>
+            <div class="flex gap-2">
               <button
                 type="button"
-                :class="['priority-btn', 'priority-low', { active: formData.priority === 'low' }]"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 cursor-pointer font-semibold text-sm transition-all duration-200"
+                :class="formData.priority === 'low'
+                  ? 'bg-fg-muted/15 border-fg-muted text-fg'
+                  : 'bg-transparent border-fg-subtle/20 text-fg-muted hover:border-fg-muted/40'"
                 @click="formData.priority = 'low'"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
                 Low
               </button>
               <button
                 type="button"
-                :class="['priority-btn', 'priority-medium', { active: formData.priority === 'medium' }]"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 cursor-pointer font-semibold text-sm transition-all duration-200"
+                :class="formData.priority === 'medium'
+                  ? 'bg-info/15 border-info text-info'
+                  : 'bg-transparent border-info/30 text-info hover:border-info/60'"
                 @click="formData.priority = 'medium'"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
                 Medium
               </button>
               <button
                 type="button"
-                :class="['priority-btn', 'priority-critical', { active: formData.priority === 'critical' }]"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 cursor-pointer font-semibold text-sm transition-all duration-200"
+                :class="formData.priority === 'critical'
+                  ? 'bg-danger/15 border-danger text-danger'
+                  : 'bg-transparent border-danger/30 text-danger hover:border-danger/60'"
                 @click="formData.priority = 'critical'"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                   <polyline points="6 9 12 9 18 9"></polyline>
                   <polyline points="6 15 12 15 18 15"></polyline>
                 </svg>
@@ -409,28 +440,30 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="form-section">
-            <label class="section-label">Description</label>
+          <!-- Description -->
+          <div>
+            <label class="label">Description</label>
             <textarea
               v-model="formData.description"
               rows="2"
-              class="form-textarea"
+              class="input"
               placeholder="What will you work on?"
             ></textarea>
           </div>
 
-          <div class="form-section">
-            <label class="section-label">Tags</label>
+          <!-- Tags -->
+          <div>
+            <label class="label">Tags</label>
             <TagMultiSelect v-model="formData.tag_ids" />
           </div>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" @click="handleCancel" class="btn-secondary">
+        <div class="flex justify-end gap-2 mt-5 pt-4 border-t border-fg-subtle/15 flex-shrink-0">
+          <button type="button" @click="handleCancel" class="btn btn-secondary">
             Cancel
           </button>
-          <button type="submit" :disabled="saving || !formData.project_id" class="btn-primary">
-            <svg v-if="saving" class="btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button type="submit" :disabled="saving || !formData.project_id" class="btn btn-primary">
+            <svg v-if="saving" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="animate-spin">
               <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"></circle>
             </svg>
             {{ saving ? 'Saving...' : (isEdit ? 'Save Changes' : 'Schedule') }}
@@ -442,555 +475,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 1rem;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-container {
-  background: white;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 520px;
-  height: 600px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem 1.5rem 1rem;
-  flex-shrink: 0;
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.header-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-}
-
-.modal-subtitle {
-  font-size: 0.85rem;
-  color: #64748b;
-  margin: 0.125rem 0 0;
-}
-
-.close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: #f1f5f9;
-  border-radius: 10px;
-  cursor: pointer;
-  color: #64748b;
-  transition: all 0.2s ease;
-}
-
-.close-btn:hover {
-  background: #e2e8f0;
-  color: #0f172a;
-}
-
-.error-banner {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  margin: 0 1.5rem;
-  padding: 0.75rem 1rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
-  color: #dc2626;
-  font-size: 0.875rem;
-  flex-shrink: 0;
-}
-
-.modal-body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  padding: 0 1.5rem 1.5rem;
-}
-
-.body-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-top: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.section-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.project-select {
-  position: relative;
-  cursor: pointer;
-}
-
-.project-placeholder,
-.project-selected {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  color: #0f172a;
-  background: white;
-  transition: all 0.2s ease;
-}
-
-.project-placeholder {
-  color: #94a3b8;
-}
-
-.project-select:hover .project-placeholder,
-.project-select:hover .project-selected {
-  border-color: #cbd5e1;
-}
-
-.project-select:focus-within .project-placeholder,
-.project-select:focus-within .project-selected {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.project-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.project-name {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.project-clear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  color: #94a3b8;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-}
-
-.project-clear:hover {
-  background: #f1f5f9;
-  color: #64748b;
-}
-
-.project-chevron {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  color: #94a3b8;
-  pointer-events: none;
-}
-
-.project-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-  z-index: 200;
-  overflow: hidden;
-}
-
-.project-search {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.project-search svg {
-  color: #94a3b8;
-  flex-shrink: 0;
-}
-
-.project-search-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  font-size: 0.875rem;
-  color: #0f172a;
-  background: transparent;
-}
-
-.project-search-input::placeholder {
-  color: #94a3b8;
-}
-
-.project-list {
-  max-height: 180px;
-  overflow-y: auto;
-  padding: 0.375rem;
-}
-
-.project-option {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  width: 100%;
-  padding: 0.5rem 0.625rem;
-  border: none;
-  background: transparent;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  color: #334155;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-}
-
-.project-option:hover {
-  background: #f8fafc;
-}
-
-.project-option.active {
-  background: #eef2ff;
-  color: #6366f1;
-}
-
-.project-empty {
-  padding: 1rem;
-  text-align: center;
-  font-size: 0.85rem;
-  color: #94a3b8;
-}
-
-.time-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
-}
-
-.time-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.time-field-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #94a3b8;
-}
-
-.time-inputs {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.time-select {
-  flex: 1;
-  padding: 0.625rem 0.375rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #0f172a;
-  background: white;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  appearance: none;
-  -moz-appearance: textfield;
-}
-
-.time-select:focus {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.time-sep {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #cbd5e1;
-  padding: 0 0.125rem;
-}
-
-.time-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #cbd5e1;
-  padding-bottom: 0.25rem;
-  flex-shrink: 0;
-}
-
-.duration-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.625rem 1rem;
-  background: #f8fafc;
-  border-radius: 10px;
-}
-
-.duration-label {
-  font-size: 0.85rem;
-  color: #64748b;
-}
-
-.duration-value {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.duration-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-}
-
-.preset-btn {
-  padding: 0.375rem 0.75rem;
-  border: 1px solid #e2e8f0;
-  background: white;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.preset-btn:hover {
-  border-color: #6366f1;
-  color: #6366f1;
-}
-
-.preset-btn.active {
-  background: #6366f1;
-  border-color: #6366f1;
-  color: white;
-}
-
-.priority-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.priority-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  padding: 0.625rem;
-  border: 2px solid;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.85rem;
-  transition: all 0.2s ease;
-  background: white;
-}
-
-.priority-low {
-  border-color: #e2e8f0;
-  color: #64748b;
-}
-
-.priority-low.active {
-  background: #f1f5f9;
-  border-color: #64748b;
-  color: #334155;
-}
-
-.priority-medium {
-  border-color: #bfdbfe;
-  color: #3b82f6;
-}
-
-.priority-medium.active {
-  background: #eff6ff;
-  border-color: #3b82f6;
-  color: #1d4ed8;
-}
-
-.priority-critical {
-  border-color: #fecaca;
-  color: #ef4444;
-}
-
-.priority-critical.active {
-  background: #fef2f2;
-  border-color: #ef4444;
-  color: #dc2626;
-}
-
-.form-textarea {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  color: #0f172a;
-  background: white;
-  transition: all 0.2s ease;
-  resize: vertical;
-  font-family: inherit;
-}
-
-.form-textarea:focus {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.form-textarea::placeholder {
-  color: #94a3b8;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid #f1f5f9;
-  flex-shrink: 0;
-}
-
-.btn-secondary {
-  padding: 0.75rem 1.25rem;
-  border: 1px solid #e2e8f0;
-  background: white;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #334155;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-}
-
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-spinner {
-  width: 16px;
-  height: 16px;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .dropdown-enter-active,
 .dropdown-leave-active {
   transition: all 0.15s ease;
@@ -1000,20 +484,5 @@ onMounted(async () => {
 .dropdown-leave-to {
   opacity: 0;
   transform: translateY(-4px);
-}
-
-@media (max-width: 640px) {
-  .modal-container {
-    border-radius: 16px;
-    margin: 0.5rem;
-  }
-
-  .time-row {
-    flex-wrap: wrap;
-  }
-
-  .time-arrow {
-    display: none;
-  }
 }
 </style>

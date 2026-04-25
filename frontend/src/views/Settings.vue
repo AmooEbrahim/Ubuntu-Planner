@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
 
 const settingsStore = useSettingsStore()
@@ -92,19 +93,19 @@ function previewSound(soundFile) {
 </script>
 
 <template>
-  <div class="settings-page">
-    <div class="page-header">
+  <div class="p-6 max-w-7xl mx-auto space-y-5">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
       <div>
         <h1 class="page-title">Settings</h1>
         <p class="page-subtitle">Configure your application preferences</p>
       </div>
-      <div class="header-actions">
-        <button @click="resetToDefaults" class="btn-secondary">Reset Defaults</button>
-        <button @click="saveSettings" :disabled="saving" class="btn-primary">
-          <svg v-if="saving" class="btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <div class="flex gap-2">
+        <button @click="resetToDefaults" class="btn btn-secondary">Reset Defaults</button>
+        <button @click="saveSettings" :disabled="saving" class="btn btn-primary">
+          <svg v-if="saving" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="animate-spin">
             <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"></circle>
           </svg>
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
             <polyline points="7 3 7 8 15 8"></polyline>
@@ -114,106 +115,142 @@ function previewSound(soundFile) {
       </div>
     </div>
 
-    <div v-if="saved" class="save-toast">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+    <div v-if="saved" class="glass-card border-l-4 border-success/60 bg-success/5 flex items-center gap-2 px-4 py-3 text-success text-sm font-medium">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
         <polyline points="22 4 12 14.01 9 11.01"></polyline>
       </svg>
       Settings saved successfully!
     </div>
 
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+    <div v-if="loading" class="glass-card flex flex-col items-center justify-center py-16 px-6 text-muted">
+      <div class="spinner mb-4"></div>
       <p>Loading settings...</p>
     </div>
 
-    <div v-else class="settings-content">
-      <div class="settings-grid">
-        <section class="settings-card">
-          <div class="card-header">
-            <div class="card-icon general">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-              </svg>
-            </div>
-            <h2 class="card-title">General</h2>
+    <div v-else class="space-y-5">
+      <!-- AI Configuration — link card -->
+      <RouterLink
+        to="/settings/ai"
+        class="glass-card p-5 flex items-center gap-4 group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-glass-lg"
+      >
+        <div
+          class="w-12 h-12 rounded-xl text-white flex items-center justify-center shadow-md flex-shrink-0"
+          style="background: linear-gradient(135deg, #a855f7, rgb(var(--accent))); box-shadow: 0 6px 20px rgba(168, 85, 247, 0.35);"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+            <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"></path>
+            <path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"></path>
+          </svg>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <h2 class="section-title">AI Assistant</h2>
+            <span
+              class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md text-white"
+              style="background: linear-gradient(135deg, #a855f7, rgb(var(--accent)));"
+            >AI</span>
           </div>
+          <p class="text-sm text-muted mt-0.5">Configure model, prompts, and tool permissions</p>
+        </div>
+        <svg class="text-fg-subtle group-hover:text-accent transition-colors flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </RouterLink>
 
-          <div class="setting-item">
-            <label class="setting-label">Language</label>
-            <select v-model="general.language" class="setting-input">
+      <div class="grid gap-5 lg:grid-cols-2">
+      <!-- General -->
+      <section class="glass-card p-6">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-accent/15 text-accent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </div>
+          <h2 class="section-title">General</h2>
+        </div>
+
+        <div class="space-y-5">
+          <div>
+            <label class="label">Language</label>
+            <select v-model="general.language" class="input">
               <option value="en">English</option>
               <option value="fa">فارسی (Persian)</option>
             </select>
           </div>
 
-          <div class="setting-item">
-            <label class="setting-label">Default Reminder Interval</label>
-            <div class="input-with-unit">
-              <input v-model.number="general.notification_interval_default" type="number" min="1" max="120" class="setting-input">
-              <span class="unit">min</span>
+          <div>
+            <label class="label">Default Reminder Interval</label>
+            <div class="flex items-center gap-2">
+              <input v-model.number="general.notification_interval_default" type="number" min="1" max="120" class="input">
+              <span class="text-sm text-muted flex-shrink-0">min</span>
             </div>
-            <p class="setting-hint">How often to remind about unstarted planned work</p>
+            <p class="text-xs text-subtle mt-1.5">How often to remind about unstarted planned work</p>
           </div>
 
-          <div class="setting-item">
-            <label class="setting-label">Session Poll Interval</label>
-            <div class="input-with-unit">
-              <input v-model.number="general.session_poll_interval" type="number" min="10" max="600" class="setting-input">
-              <span class="unit">sec</span>
+          <div>
+            <label class="label">Session Poll Interval</label>
+            <div class="flex items-center gap-2">
+              <input v-model.number="general.session_poll_interval" type="number" min="10" max="600" class="input">
+              <span class="text-sm text-muted flex-shrink-0">sec</span>
             </div>
-            <p class="setting-hint">How often to check for session updates</p>
+            <p class="text-xs text-subtle mt-1.5">How often to check for session updates</p>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section class="settings-card">
-          <div class="card-header">
-            <div class="card-icon notifications">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-            </div>
-            <h2 class="card-title">Notifications</h2>
+      <!-- Notifications -->
+      <section class="glass-card p-6">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-warning/15 text-warning">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
           </div>
+          <h2 class="section-title">Notifications</h2>
+        </div>
 
+        <div class="space-y-3">
           <div
             v-for="type in notificationTypes"
             :key="type.key"
-            class="notification-card"
+            class="glass-inset p-4"
           >
-            <div class="notif-header">
-              <div class="notif-info">
-                <h3 class="notif-title">{{ type.label }}</h3>
-                <p class="notif-desc">{{ type.description }}</p>
+            <div class="flex justify-between items-start gap-4">
+              <div>
+                <h3 class="text-sm font-semibold text-fg">{{ type.label }}</h3>
+                <p class="text-xs text-muted mt-0.5">{{ type.description }}</p>
               </div>
-              <label class="toggle-switch">
-                <input type="checkbox" v-model="notifications[type.key].enabled">
-                <span class="toggle-slider"></span>
+              <label class="relative inline-block cursor-pointer flex-shrink-0">
+                <input type="checkbox" v-model="notifications[type.key].enabled" class="sr-only peer">
+                <span class="block w-10 h-[22px] bg-fg-subtle/40 peer-checked:bg-accent rounded-full transition-colors"></span>
+                <span class="absolute top-[3px] left-[3px] w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-[18px]"></span>
               </label>
             </div>
 
-            <div v-if="notifications[type.key].enabled" class="notif-config">
-              <label class="toggle-inline">
-                <input type="checkbox" v-model="notifications[type.key].config.sound_enabled">
-                <span class="toggle-label-text">Play sound</span>
+            <div v-if="notifications[type.key].enabled" class="mt-3 pt-3 border-t border-fg-subtle/15">
+              <label class="flex items-center gap-2 cursor-pointer mb-3">
+                <input type="checkbox" v-model="notifications[type.key].config.sound_enabled" class="w-4 h-4 cursor-pointer" style="accent-color: rgb(var(--accent));">
+                <span class="text-sm text-fg">Play sound</span>
               </label>
 
-              <div v-if="notifications[type.key].config.sound_enabled" class="sound-config">
-                <div class="sound-row">
-                  <select v-model="notifications[type.key].config.sound_file" class="setting-input setting-sm">
+              <div v-if="notifications[type.key].config.sound_enabled" class="flex flex-col gap-2 ml-6">
+                <div class="flex items-center gap-2">
+                  <select v-model="notifications[type.key].config.sound_file" class="input text-sm py-1.5 max-w-[200px]">
                     <option v-for="sound in availableSounds" :key="sound" :value="sound">{{ sound }}</option>
                   </select>
-                  <button @click="previewSound(notifications[type.key].config.sound_file)" class="btn-preview" title="Preview sound">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                  <button @click="previewSound(notifications[type.key].config.sound_file)" class="icon-btn !w-8 !h-8 !text-accent" title="Preview sound">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
                       <polygon points="5 3 19 12 5 21 5 3"></polygon>
                     </svg>
                   </button>
                 </div>
-                <div class="sound-row">
-                  <span class="sound-label">Play count</span>
-                  <select v-model.number="notifications[type.key].config.sound_repeat" class="setting-input setting-sm">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-muted min-w-[80px]">Play count</span>
+                  <select v-model.number="notifications[type.key].config.sound_repeat" class="input text-sm py-1.5 max-w-[200px]">
                     <option :value="1">1×</option>
                     <option :value="2">2×</option>
                     <option :value="3">3×</option>
@@ -224,78 +261,9 @@ function previewSound(soundFile) {
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.settings-page { max-width: 1280px; margin: 0 auto; padding: 2rem; --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
-.page-title { font-size: 2rem; font-weight: 700; color: #0f172a; margin: 0; letter-spacing: -0.025em; }
-.page-subtitle { color: #64748b; margin: 0.25rem 0 0; font-size: 0.95rem; }
-.header-actions { display: flex; gap: 0.75rem; }
-
-.btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all var(--transition); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
-.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4); }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn-secondary { padding: 0.75rem 1.25rem; border: 1px solid #e2e8f0; background: white; border-radius: 12px; font-size: 0.9rem; font-weight: 500; color: #334155; cursor: pointer; transition: all var(--transition); }
-.btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; }
-.btn-spinner { width: 16px; height: 16px; animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.save-toast { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; color: #059669; font-size: 0.875rem; font-weight: 500; margin-bottom: 1.5rem; animation: slideDown 0.3s ease; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-.loading-state { display: flex; flex-direction: column; align-items: center; padding: 4rem 2rem; color: #64748b; }
-.spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 1rem; }
-
-.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-
-.settings-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.5rem; }
-.card-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
-.card-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; }
-.card-icon.general { background: #eef2ff; color: #6366f1; }
-.card-icon.notifications { background: #fef3c7; color: #d97706; }
-.card-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
-
-.setting-item { margin-bottom: 1.25rem; }
-.setting-label { display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.5rem; }
-.setting-input { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; color: #0f172a; background: white; transition: all var(--transition); }
-.setting-input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
-.setting-hint { font-size: 0.75rem; color: #94a3b8; margin: 0.375rem 0 0; }
-.input-with-unit { display: flex; align-items: center; gap: 0.5rem; }
-.input-with-unit .setting-input { flex: 1; }
-.unit { font-size: 0.85rem; color: #64748b; flex-shrink: 0; }
-
-.notification-card { padding: 1rem; background: #f8fafc; border-radius: 12px; margin-bottom: 0.75rem; }
-.notif-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
-.notif-title { font-size: 0.9rem; font-weight: 600; color: #0f172a; margin: 0; }
-.notif-desc { font-size: 0.8rem; color: #64748b; margin: 0.125rem 0 0; }
-
-.toggle-switch { position: relative; flex-shrink: 0; }
-.toggle-switch input { display: none; }
-.toggle-slider { display: block; width: 40px; height: 22px; background: #cbd5e1; border-radius: 11px; position: relative; transition: all var(--transition); cursor: pointer; }
-.toggle-slider::after { content: ''; position: absolute; width: 16px; height: 16px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: all var(--transition); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
-.toggle-switch input:checked + .toggle-slider { background: #6366f1; }
-.toggle-switch input:checked + .toggle-slider::after { left: 21px; }
-
-.notif-config { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0; }
-.toggle-inline { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-bottom: 0.75rem; }
-.toggle-inline input[type="checkbox"] { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; }
-.toggle-label-text { font-size: 0.85rem; color: #334155; }
-
-.sound-config { display: flex; flex-direction: column; gap: 0.5rem; margin-left: 1.5rem; }
-.sound-row { display: flex; align-items: center; gap: 0.5rem; }
-.sound-label { font-size: 0.8rem; color: #64748b; min-width: 80px; }
-.setting-sm { max-width: 200px; }
-.btn-preview { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #e2e8f0; background: white; border-radius: 8px; cursor: pointer; color: #6366f1; transition: all var(--transition); flex-shrink: 0; }
-.btn-preview:hover { background: #6366f1; color: white; border-color: #6366f1; }
-
-@media (max-width: 768px) {
-  .settings-page { padding: 1rem; }
-  .page-header { flex-direction: column; gap: 1rem; }
-  .settings-grid { grid-template-columns: 1fr; }
-}
-</style>

@@ -1,16 +1,16 @@
 <template>
-  <div class="flex items-center gap-2">
-    <span class="text-sm text-gray-600 font-medium mr-2">Mood</span>
+  <div class="flex items-center gap-2 flex-wrap">
+    <span class="text-sm text-muted font-medium mr-2">Mood</span>
     <button
       v-for="value in 5"
       :key="value"
       type="button"
       :disabled="disabled"
-      class="h-9 w-9 rounded-full border text-base flex items-center justify-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      class="h-9 w-9 rounded-full border text-base flex items-center justify-center transition-all focus:outline-none"
       :class="[
         modelValue === value
-          ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
-          : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600',
+          ? 'bg-accent text-white border-accent shadow-sm shadow-accent/30'
+          : 'bg-white/40 dark:bg-white/5 text-fg-muted border-fg-subtle/30 hover:border-accent hover:text-accent',
         disabled && 'opacity-60 cursor-not-allowed',
       ]"
       :aria-label="moodLabel(value)"
@@ -22,7 +22,7 @@
     <button
       type="button"
       :disabled="disabled || modelValue == null"
-      class="ml-2 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:hover:text-gray-500"
+      class="ml-2 text-xs text-muted hover:text-fg disabled:opacity-40 disabled:hover:text-fg-muted transition-colors"
       @click="select(null)"
     >
       Clear

@@ -9,15 +9,20 @@ const emit = defineEmits(['edit', 'delete', 'toggle-archive', 'toggle-pin', 'add
 </script>
 
 <template>
-  <div class="project-tree">
-    <div v-if="!projects || projects.length === 0" class="empty-tree">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-      </svg>
-      <p>No projects found. Create your first project to get started.</p>
+  <div>
+    <div
+      v-if="!projects || projects.length === 0"
+      class="glass-card flex flex-col items-center justify-center py-16 px-8 text-center text-muted"
+    >
+      <div class="flex items-center justify-center w-14 h-14 rounded-full bg-fg-subtle/15 text-fg-subtle mb-4">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </div>
+      <p class="text-sm">No projects found. Create your first project to get started.</p>
     </div>
 
-    <div v-else class="tree-list">
+    <div v-else class="flex flex-col gap-2">
       <ProjectTreeItem
         v-for="project in projects"
         :key="project.id"
@@ -33,35 +38,3 @@ const emit = defineEmits(['edit', 'delete', 'toggle-archive', 'toggle-pin', 'add
     </div>
   </div>
 </template>
-
-<style scoped>
-.project-tree {
-  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.empty-tree {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  text-align: center;
-  color: #94a3b8;
-}
-
-.empty-tree svg {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 1rem;
-}
-
-.empty-tree p {
-  font-size: 0.95rem;
-}
-
-.tree-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-</style>

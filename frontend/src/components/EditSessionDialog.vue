@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useSessionStore } from '@/stores/sessions'
 import { useProjectStore } from '@/stores/projects'
 import TagMultiSelect from '@/components/TagMultiSelect.vue'
@@ -49,34 +49,42 @@ async function handleSubmit() {
     saving.value = false
   }
 }
+
+function satisfactionColor(score) {
+  if (score === null || score === undefined) return 'rgb(var(--fg-subtle))'
+  if (score >= 80) return 'rgb(var(--success))'
+  if (score >= 60) return 'rgb(var(--info))'
+  if (score >= 40) return 'rgb(var(--warning))'
+  return 'rgb(var(--danger))'
+}
 </script>
 
 <template>
   <div class="modal-overlay" @click.self="emit('close')" @keydown.escape="emit('close')">
-    <div class="modal-container">
-      <div class="modal-header">
-        <div class="header-content">
-          <div class="header-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" width="20" height="20">
+    <div class="glass-panel w-full max-w-xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center p-6 pb-4 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-accent/15 text-accent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
             </svg>
           </div>
           <div>
-            <h2 class="modal-title">Edit Session</h2>
-            <p class="modal-subtitle">Update session details</p>
+            <h2 class="text-lg font-bold text-fg">Edit Session</h2>
+            <p class="text-xs text-muted mt-0.5">Update session details</p>
           </div>
         </div>
-        <button @click="emit('close')" class="close-btn" title="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+        <button @click="emit('close')" class="icon-btn" title="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
       </div>
 
-      <div v-if="error" class="error-banner">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+      <div v-if="error" class="mx-6 mb-4 flex items-center gap-2 px-3 py-2 rounded-xl border border-danger/30 bg-danger/10 text-danger text-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="flex-shrink-0">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="8" x2="12" y2="12"></line>
           <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -84,16 +92,24 @@ async function handleSubmit() {
         <span>{{ error }}</span>
       </div>
 
-      <div class="modal-tabs">
-        <button :class="['tab-btn', { active: activeTab === 'details' }]" @click="activeTab = 'details'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+      <div class="mx-6 mb-3 glass-inset p-1 inline-flex gap-0.5 flex-shrink-0">
+        <button
+          :class="['flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+            activeTab === 'details' ? 'bg-accent text-white shadow-sm' : 'text-fg-muted hover:text-fg']"
+          @click="activeTab = 'details'"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
           </svg>
           Details
         </button>
-        <button :class="['tab-btn', { active: activeTab === 'reflection' }]" @click="activeTab = 'reflection'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <button
+          :class="['flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+            activeTab === 'reflection' ? 'bg-accent text-white shadow-sm' : 'text-fg-muted hover:text-fg']"
+          @click="activeTab = 'reflection'"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
             <circle cx="12" cy="12" r="10"></circle>
             <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
             <line x1="9" y1="9" x2="9.01" y2="9"></line>
@@ -103,79 +119,79 @@ async function handleSubmit() {
         </button>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="modal-body">
-        <div class="body-scroll">
-          <div v-show="activeTab === 'details'" class="tab-content">
-            <div class="form-group">
-              <label class="section-label">Project</label>
-              <select v-model="form.project_id" class="form-input">
+      <form @submit.prevent="handleSubmit" class="flex flex-col flex-1 min-h-0 px-6 pb-6">
+        <div class="flex-1 min-h-0 overflow-y-auto pt-2">
+          <div v-show="activeTab === 'details'" class="space-y-5">
+            <div>
+              <label class="label">Project</label>
+              <select v-model="form.project_id" class="input">
                 <option :value="null">No Project</option>
                 <option v-for="project in projectStore.activeProjects" :key="project.id" :value="project.id">{{ project.name }}</option>
               </select>
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label class="section-label">Start Time</label>
-                <input type="datetime-local" v-model="form.start_time" class="form-input" required>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="label">Start Time</label>
+                <input type="datetime-local" v-model="form.start_time" class="input" required>
               </div>
-              <div class="form-group">
-                <label class="section-label">End Time</label>
-                <input type="datetime-local" v-model="form.end_time" class="form-input">
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label class="section-label">Planned Duration</label>
-                <div class="input-with-unit">
-                  <input type="number" v-model.number="form.planned_duration" min="1" max="480" class="form-input">
-                  <span class="unit">min</span>
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="section-label">Actual Duration</label>
-                <div class="input-with-unit">
-                  <input type="number" v-model.number="form.actual_duration" min="1" max="480" class="form-input">
-                  <span class="unit">min</span>
-                </div>
+              <div>
+                <label class="label">End Time</label>
+                <input type="datetime-local" v-model="form.end_time" class="input">
               </div>
             </div>
 
-            <div class="form-group">
-              <label class="section-label">Tags</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="label">Planned Duration</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" v-model.number="form.planned_duration" min="1" max="480" class="input">
+                  <span class="text-sm text-muted flex-shrink-0">min</span>
+                </div>
+              </div>
+              <div>
+                <label class="label">Actual Duration</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" v-model.number="form.actual_duration" min="1" max="480" class="input">
+                  <span class="text-sm text-muted flex-shrink-0">min</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="label">Tags</label>
               <TagMultiSelect v-model="form.tag_ids" />
             </div>
           </div>
 
-          <div v-show="activeTab === 'reflection'" class="tab-content">
-            <div class="form-group">
-              <label class="section-label">Satisfaction</label>
-              <div class="satisfaction-control">
-                <div class="satisfaction-value" :style="{ color: form.satisfaction_score !== null ? (form.satisfaction_score >= 80 ? '#10b981' : form.satisfaction_score >= 60 ? '#3b82f6' : form.satisfaction_score >= 40 ? '#f59e0b' : '#ef4444') : '#94a3b8' }">
+          <div v-show="activeTab === 'reflection'" class="space-y-5">
+            <div>
+              <label class="label">Satisfaction</label>
+              <div class="glass-inset flex flex-col items-center gap-3 p-4">
+                <div class="text-2xl font-bold" :style="{ color: satisfactionColor(form.satisfaction_score) }">
                   {{ form.satisfaction_score !== null ? form.satisfaction_score + '%' : 'Not set' }}
                 </div>
-                <input type="range" v-model.number="form.satisfaction_score" min="0" max="100" step="5" class="satisfaction-slider">
-                <button type="button" @click="form.satisfaction_score = null" class="clear-link">Clear</button>
+                <input type="range" v-model.number="form.satisfaction_score" min="0" max="100" step="5" class="w-full" style="accent-color: rgb(var(--accent))">
+                <button type="button" @click="form.satisfaction_score = null" class="text-sm text-accent hover:underline">Clear</button>
               </div>
             </div>
 
-            <div class="form-group">
-              <label class="section-label">Tasks Accomplished</label>
-              <textarea v-model="form.tasks_done" rows="3" class="form-textarea" placeholder="What did you accomplish?"></textarea>
+            <div>
+              <label class="label">Tasks Accomplished</label>
+              <textarea v-model="form.tasks_done" rows="3" class="input" placeholder="What did you accomplish?"></textarea>
             </div>
 
-            <div class="form-group">
-              <label class="section-label">Notes</label>
-              <textarea v-model="form.notes" rows="3" class="form-textarea" placeholder="Any additional notes..."></textarea>
+            <div>
+              <label class="label">Notes</label>
+              <textarea v-model="form.notes" rows="3" class="input" placeholder="Any additional notes..."></textarea>
             </div>
           </div>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" @click="emit('close')" class="btn-secondary">Cancel</button>
-          <button type="submit" :disabled="saving" class="btn-primary">
-            <svg v-if="saving" class="btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="flex justify-end gap-2 mt-5 pt-4 border-t border-fg-subtle/15 flex-shrink-0">
+          <button type="button" @click="emit('close')" class="btn btn-secondary">Cancel</button>
+          <button type="submit" :disabled="saving" class="btn btn-primary">
+            <svg v-if="saving" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="animate-spin">
               <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"></circle>
             </svg>
             {{ saving ? 'Saving...' : 'Save Changes' }}
@@ -185,58 +201,3 @@ async function handleSubmit() {
     </div>
   </div>
 </template>
-
-<style scoped>
-.modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; animation: fadeIn 0.2s ease; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-.modal-container { background: white; border-radius: 20px; width: 100%; max-width: 520px; height: 560px; display: flex; flex-direction: column; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15); animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
-
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 1.5rem 1rem; flex-shrink: 0; }
-.header-content { display: flex; align-items: center; gap: 1rem; }
-.header-icon { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: #eef2ff; border-radius: 12px; }
-.modal-title { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 0; }
-.modal-subtitle { font-size: 0.85rem; color: #64748b; margin: 0.125rem 0 0; }
-.close-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: none; background: #f1f5f9; border-radius: 10px; cursor: pointer; color: #64748b; transition: all 0.2s ease; }
-.close-btn:hover { background: #e2e8f0; color: #0f172a; }
-
-.error-banner { display: flex; align-items: center; gap: 0.625rem; margin: 0 1.5rem; padding: 0.75rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; color: #dc2626; font-size: 0.875rem; flex-shrink: 0; }
-
-.modal-tabs { display: flex; gap: 0.25rem; padding: 1rem 1.5rem 0; background: #f8fafc; margin: 0 1.5rem; border-radius: 10px; flex-shrink: 0; }
-.tab-btn { display: flex; align-items: center; gap: 0.5rem; flex: 1; padding: 0.625rem 1rem; border: none; background: transparent; border-radius: 8px; font-size: 0.875rem; font-weight: 500; color: #64748b; cursor: pointer; transition: all 0.2s ease; }
-.tab-btn.active { background: white; color: #6366f1; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.tab-btn:hover:not(.active) { color: #334155; }
-
-.modal-body { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 0 1.5rem 1.5rem; }
-.body-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-top: 1.25rem; }
-.tab-content { display: flex; flex-direction: column; gap: 1.25rem; }
-
-.section-label { font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.5rem; }
-.form-input { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; color: #0f172a; background: white; transition: all 0.2s ease; }
-.form-input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
-.form-textarea { width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; color: #0f172a; background: white; transition: all 0.2s ease; resize: vertical; font-family: inherit; }
-.form-textarea:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
-.form-textarea::placeholder { color: #94a3b8; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.input-with-unit { display: flex; align-items: center; gap: 0.5rem; }
-.input-with-unit .form-input { flex: 1; }
-.unit { font-size: 0.85rem; color: #64748b; flex-shrink: 0; }
-
-.satisfaction-control { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 1rem; background: #f8fafc; border-radius: 10px; }
-.satisfaction-value { font-size: 1.5rem; font-weight: 700; }
-.satisfaction-slider { width: 100%; accent-color: #6366f1; }
-.clear-link { background: none; border: none; color: #6366f1; font-size: 0.85rem; font-weight: 500; cursor: pointer; }
-.clear-link:hover { text-decoration: underline; }
-
-.modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; flex-shrink: 0; }
-.btn-secondary { padding: 0.75rem 1.25rem; border: 1px solid #e2e8f0; background: white; border-radius: 10px; font-size: 0.9rem; font-weight: 500; color: #334155; cursor: pointer; transition: all 0.2s ease; }
-.btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; }
-.btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
-.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4); }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn-spinner { width: 16px; height: 16px; animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-@media (max-width: 640px) { .modal-container { border-radius: 16px; margin: 0.5rem; } .form-row { grid-template-columns: 1fr; } }
-</style>

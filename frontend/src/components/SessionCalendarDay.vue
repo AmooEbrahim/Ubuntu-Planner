@@ -115,10 +115,10 @@ function getDensity(session) {
 }
 
 function getSessionStatusColor(session) {
-  if (!session.end_time) return '#10b981'
+  if (!session.end_time) return 'rgb(16 185 129)'
   const duration = session.actual_duration || 0
-  if (duration > session.planned_duration) return '#f59e0b'
-  return '#6b7280'
+  if (duration > session.planned_duration) return 'rgb(245 158 11)'
+  return 'rgb(100 116 139)'
 }
 
 function formatTime(datetime) {
@@ -182,7 +182,7 @@ watch(
 </script>
 
 <template>
-  <div class="session-calendar">
+  <div class="session-calendar glass-card overflow-hidden">
     <div ref="sessionsAreaRef" class="timeline-scroll">
       <div class="timeline" :style="{ minHeight: `${24 * 60}px` }">
         <div class="time-labels">
@@ -271,13 +271,6 @@ watch(
 </template>
 
 <style scoped>
-.session-calendar {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
 .timeline-scroll {
   max-height: 800px;
   overflow-y: auto;
@@ -293,8 +286,8 @@ watch(
   width: 70px;
   flex-shrink: 0;
   position: relative;
-  border-right: 1px solid #e5e7eb;
-  background: #fafbfc;
+  border-right: 1px solid rgb(var(--glass-divider) / var(--glass-divider-alpha));
+  background: rgb(var(--glass-bg) / 0.25);
 }
 
 .time-label {
@@ -303,7 +296,7 @@ watch(
   right: 0;
   text-align: center;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: rgb(var(--fg-subtle));
   font-weight: 500;
   transform: translateY(-8px);
   padding: 0 0.5rem;
@@ -319,19 +312,19 @@ watch(
   left: 0;
   right: 0;
   height: 60px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid rgb(var(--glass-divider) / var(--glass-divider-alpha));
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .hour-slot:hover {
-  background-color: #f9fafb;
+  background-color: rgb(var(--accent) / 0.05);
 }
 
 .session-item {
   position: absolute;
   border-left: 4px solid;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 4px 6px 4px 8px;
   cursor: pointer;
   transition: box-shadow 0.2s, z-index 0s;
@@ -342,10 +335,11 @@ watch(
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   z-index: 10;
   background-clip: padding-box;
+  backdrop-filter: blur(8px);
 }
 
 .session-item:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
   z-index: 20;
 }
 
@@ -384,7 +378,7 @@ watch(
 .time-range {
   font-size: 0.7rem;
   font-weight: 600;
-  color: #475569;
+  color: rgb(var(--fg-muted));
   white-space: nowrap;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
@@ -392,7 +386,7 @@ watch(
 
 .active-pill {
   margin-left: 4px;
-  color: #10b981;
+  color: rgb(var(--success));
   font-size: 0.65rem;
 }
 
@@ -406,10 +400,11 @@ watch(
   opacity: 0;
   transition: opacity 0.15s ease;
   flex-shrink: 0;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.95) 25%);
+  background: linear-gradient(to right, transparent, rgb(var(--glass-bg) / 0.95) 25%);
   padding: 0 2px 0 18px;
   border-radius: 4px;
   pointer-events: none;
+  backdrop-filter: blur(4px);
 }
 
 .session-item:hover .session-actions {
@@ -418,9 +413,9 @@ watch(
 }
 
 .action-btn {
-  background: white;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
+  background: rgb(var(--glass-bg) / 0.85);
+  border: 1px solid rgb(var(--glass-border) / var(--glass-border-alpha));
+  border-radius: 6px;
   cursor: pointer;
   width: 22px;
   height: 22px;
@@ -430,18 +425,20 @@ watch(
   font-size: 0.85rem;
   line-height: 1;
   transition: all 0.15s ease;
+  color: rgb(var(--fg));
+  backdrop-filter: blur(6px);
 }
 
 .edit-btn:hover {
-  background-color: #3b82f6;
+  background-color: rgb(var(--accent));
   color: white;
-  border-color: #3b82f6;
+  border-color: rgb(var(--accent));
 }
 
 .delete-btn:hover {
-  background-color: #ef4444;
+  background-color: rgb(var(--danger));
   color: white;
-  border-color: #ef4444;
+  border-color: rgb(var(--danger));
 }
 
 .session-meta {
@@ -449,7 +446,7 @@ watch(
   align-items: center;
   gap: 8px;
   font-size: 0.7rem;
-  color: #475569;
+  color: rgb(var(--fg-muted));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -459,17 +456,17 @@ watch(
 
 .duration {
   font-weight: 600;
-  color: #0f172a;
+  color: rgb(var(--fg));
 }
 
 .planned {
-  color: #94a3b8;
+  color: rgb(var(--fg-subtle));
   font-weight: 500;
 }
 
 .satisfaction-pill {
-  background: rgba(99, 102, 241, 0.12);
-  color: #4f46e5;
+  background: rgb(var(--accent) / 0.15);
+  color: rgb(var(--accent));
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 999px;
@@ -493,7 +490,7 @@ watch(
 
 .more-tags {
   font-size: 0.6rem;
-  color: #94a3b8;
+  color: rgb(var(--fg-subtle));
   align-self: center;
 }
 
@@ -511,16 +508,16 @@ watch(
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #ef4444;
+  background: rgb(var(--danger));
   margin-left: -5px;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  box-shadow: 0 0 0 3px rgb(var(--danger) / 0.18);
   flex-shrink: 0;
 }
 
 .now-bar {
   flex: 1;
   height: 2px;
-  background: #ef4444;
+  background: rgb(var(--danger));
 }
 
 @media (max-width: 768px) {

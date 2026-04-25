@@ -3,8 +3,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useTagStore } from '@/stores/tags'
 
 const props = defineProps({
-  projectId: Number,  // Project context for tag inheritance
-  modelValue: {       // Selected tag IDs
+  projectId: Number,
+  modelValue: {
     type: Array,
     default: () => []
   }
@@ -41,7 +41,6 @@ async function loadTags() {
 
 const filteredTags = computed(() => {
   if (!searchQuery.value) return availableTags.value
-
   const query = searchQuery.value.toLowerCase()
   return availableTags.value.filter(t =>
     t.name.toLowerCase().includes(query)
@@ -51,13 +50,8 @@ const filteredTags = computed(() => {
 function toggleTag(tagId) {
   const selected = [...props.modelValue]
   const index = selected.indexOf(tagId)
-
-  if (index > -1) {
-    selected.splice(index, 1)
-  } else {
-    selected.push(tagId)
-  }
-
+  if (index > -1) selected.splice(index, 1)
+  else selected.push(tagId)
   emit('update:modelValue', selected)
 }
 
@@ -67,18 +61,18 @@ function isSelected(tagId) {
 </script>
 
 <template>
-  <div class="tag-selector">
+  <div>
     <input
       v-model="searchQuery"
       placeholder="Search tags..."
-      class="w-full px-3 py-2 border border-gray-300 rounded mb-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+      class="input mb-3"
     >
 
-    <div v-if="loading" class="text-center text-gray-500 py-4">
+    <div v-if="loading" class="text-center text-muted py-4 text-sm">
       Loading tags...
     </div>
 
-    <div v-else-if="filteredTags.length === 0" class="text-center text-gray-500 py-4">
+    <div v-else-if="filteredTags.length === 0" class="text-center text-muted py-4 text-sm">
       No tags found
     </div>
 
@@ -87,22 +81,19 @@ function isSelected(tagId) {
         v-for="tag in filteredTags"
         :key="tag.id"
         @click="toggleTag(tag.id)"
-        :class="['px-3 py-2 rounded border-2 transition-all', {
-          'border-opacity-100 text-white': isSelected(tag.id),
-          'border-opacity-50 bg-white': !isSelected(tag.id)
-        }]"
+        type="button"
+        class="px-3 py-2 rounded-xl border-2 transition-all duration-150 text-sm font-medium text-left truncate"
         :style="{
-          backgroundColor: isSelected(tag.id) ? tag.color : 'white',
-          borderColor: tag.color,
+          backgroundColor: isSelected(tag.id) ? tag.color : 'transparent',
+          borderColor: tag.color + (isSelected(tag.id) ? '' : '80'),
           color: isSelected(tag.id) ? 'white' : tag.color
         }"
-        type="button"
       >
         {{ tag.name }}
       </button>
     </div>
 
-    <div v-if="props.modelValue.length > 0" class="mt-3 text-sm text-gray-600">
+    <div v-if="props.modelValue.length > 0" class="mt-3 text-xs text-muted">
       Selected: {{ props.modelValue.length }} tag(s)
     </div>
   </div>

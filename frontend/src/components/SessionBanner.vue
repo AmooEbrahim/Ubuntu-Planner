@@ -24,11 +24,8 @@ const progress = computed(() => {
 onMounted(async () => {
   await sessionStore.fetchActiveSession()
 
-  // Update elapsed time every second for smooth display
   updateInterval.value = setInterval(() => {
-    // Force reactive update by accessing computed properties
     if (session.value) {
-      // This triggers reactivity
       const _ = elapsed.value
     }
   }, 1000)
@@ -107,99 +104,160 @@ function formatDuration(minutes) {
 </script>
 
 <template>
-  <div v-if="session" class="session-banner" :class="{ minimized, overtime: isOvertime }">
-    <!-- Minimized View -->
-    <div v-if="minimized" class="banner-minimized" @click="minimized = false">
-      <span class="status-indicator">🟢</span>
-      <span class="minimized-text">
-        {{ session.project?.name || 'Session' }} •
-        {{ formatDuration(elapsed) }} / {{ formatDuration(session.planned_duration) }}
-        <span v-if="isOvertime" class="overtime-badge">+{{ formatDuration(overtimeMinutes) }}</span>
-      </span>
-      <button class="expand-btn" title="Expand">▼</button>
-    </div>
+  <div v-if="session" class="px-3 pt-3">
+    <div
+      class="glass-card overflow-hidden transition-all duration-300"
+      :class="[
+        isOvertime
+          ? 'ring-2 ring-danger/40 shadow-danger/10'
+          : 'ring-1 ring-success/30 shadow-success/10'
+      ]"
+    >
+      <!-- Minimized View -->
+      <button
+        v-if="minimized"
+        type="button"
+        class="w-full px-4 py-2.5 flex items-center gap-3 text-left hover:bg-white/30 dark:hover:bg-white/5 transition-colors"
+        @click="minimized = false"
+      >
+        <span
+          class="inline-flex w-2.5 h-2.5 rounded-full flex-shrink-0"
+          :class="isOvertime ? 'bg-danger animate-pulse' : 'bg-success'"
+        ></span>
+        <span class="flex-1 text-sm font-semibold truncate">
+          {{ session.project?.name || 'Session' }}
+          <span class="text-fg-muted font-normal">·</span>
+          <span class="font-mono text-fg-muted">{{ formatDuration(elapsed) }} / {{ formatDuration(session.planned_duration) }}</span>
+          <span v-if="isOvertime" class="badge badge-danger ml-2">+{{ formatDuration(overtimeMinutes) }}</span>
+        </span>
+        <span class="text-fg-subtle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </span>
+      </button>
 
-    <!-- Expanded View -->
-    <div v-else class="banner-expanded">
-      <div class="banner-header">
-        <div class="project-info">
-          <span class="status-indicator">🟢</span>
-          <span class="project-name">{{ session.project?.name || 'No Project' }}</span>
+      <!-- Expanded View -->
+      <div v-else class="p-4">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <div class="flex items-center gap-2 min-w-0">
+            <span
+              class="inline-flex w-2.5 h-2.5 rounded-full flex-shrink-0"
+              :class="isOvertime ? 'bg-danger animate-pulse' : 'bg-success'"
+            ></span>
+            <span class="font-semibold truncate">{{ session.project?.name || 'No Project' }}</span>
+          </div>
+
+          <div class="flex items-center gap-2 text-sm">
+            <span
+              class="font-mono font-bold text-base"
+              :class="isOvertime ? 'text-danger' : 'text-success'"
+            >{{ formatDuration(elapsed) }}</span>
+            <span class="text-fg-subtle">/</span>
+            <span class="font-mono text-muted">{{ formatDuration(session.planned_duration) }}</span>
+            <span v-if="!isOvertime && remaining > 0" class="text-muted hidden sm:inline">
+              ({{ formatDuration(remaining) }} left)
+            </span>
+            <span v-if="isOvertime" class="badge badge-danger hidden sm:inline">
+              +{{ formatDuration(overtimeMinutes) }} over
+            </span>
+          </div>
+
+          <button
+            @click="minimized = true"
+            class="icon-btn"
+            title="Minimize"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+          </button>
         </div>
 
-        <div class="time-info">
-          <span class="elapsed">{{ formatDuration(elapsed) }}</span>
-          <span class="separator">/</span>
-          <span class="planned">{{ formatDuration(session.planned_duration) }}</span>
-          <span v-if="!isOvertime && remaining > 0" class="remaining">
-            ({{ formatDuration(remaining) }} left)
-          </span>
-          <span v-if="isOvertime" class="overtime-text">
-            (+{{ formatDuration(overtimeMinutes) }} over)
-          </span>
+        <div class="h-1.5 rounded-full bg-fg-subtle/20 overflow-hidden mb-3">
+          <div
+            class="h-full rounded-full transition-all duration-500"
+            :class="progress >= 100
+              ? 'bg-gradient-to-r from-danger to-rose-600'
+              : 'bg-gradient-to-r from-success to-accent'"
+            :style="{ width: `${progress}%` }"
+          ></div>
         </div>
 
-        <button @click="minimized = true" class="minimize-btn" title="Minimize">▲</button>
-      </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button @click="handleAddTime" class="btn btn-secondary btn-sm" title="Add 15 minutes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 8v4l3 2"></path>
+            </svg>
+            <span>+15 min</span>
+          </button>
 
-      <div class="progress-bar">
-        <div
-          class="progress-fill"
-          :class="{ overtime: progress >= 100 }"
-          :style="{ width: `${progress}%` }"
-        ></div>
-      </div>
+          <button @click="openNoteDialog" class="btn btn-secondary btn-sm" title="Add note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            <span class="hidden sm:inline">Add Note</span>
+          </button>
 
-      <div class="banner-actions">
-        <button @click="handleAddTime" class="action-btn" title="Add 15 minutes">
-          <span>⏱</span>
-          <span class="btn-text">+15 min</span>
-        </button>
+          <button
+            @click="handleToggleNotifications"
+            class="icon-btn"
+            :title="session.notification_disabled ? 'Enable notifications' : 'Disable notifications'"
+          >
+            <svg v-if="session.notification_disabled" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              <path d="M18 8a6 6 0 0 0-9.33-5"></path>
+              <path d="M6.26 6.26A6 6 0 0 0 6 8c0 7-3 9-3 9h14"></path>
+              <line x1="2" y1="2" x2="22" y2="22"></line>
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+          </button>
 
-        <button @click="openNoteDialog" class="action-btn" title="Add note">
-          <span>📝</span>
-          <span class="btn-text">Add Note</span>
-        </button>
+          <div class="flex-1"></div>
 
-        <button
-          @click="handleToggleNotifications"
-          class="action-btn"
-          :title="session.notification_disabled ? 'Enable notifications' : 'Disable notifications'"
-        >
-          {{ session.notification_disabled ? '🔕' : '🔔' }}
-        </button>
+          <button @click="handleQuickStop" class="btn btn-secondary btn-sm text-danger" title="Stop without review">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+              <rect x="5" y="5" width="14" height="14" rx="1"></rect>
+            </svg>
+            <span class="hidden sm:inline">Quick Stop</span>
+          </button>
 
-        <button @click="handleQuickStop" class="action-btn danger" title="Stop without review">
-          <span>⏹</span>
-          <span class="btn-text">Quick Stop</span>
-        </button>
-
-        <button @click="openReview" class="action-btn primary" title="Stop and review">
-          <span>✓</span>
-          <span class="btn-text">Stop & Review</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Note Dialog -->
-    <div v-if="showNoteDialog" class="note-dialog-overlay" @click.self="showNoteDialog = false">
-      <div class="note-dialog-content">
-        <h3>Add Note</h3>
-        <textarea
-          v-model="noteText"
-          placeholder="Enter note..."
-          rows="3"
-          class="note-textarea"
-          autofocus
-        ></textarea>
-        <div class="note-actions">
-          <button @click="showNoteDialog = false" class="btn btn-secondary">Cancel</button>
-          <button @click="saveNote" class="btn btn-primary" :disabled="!noteText.trim()">
-            Save
+          <button @click="openReview" class="btn btn-success btn-sm" title="Stop and review">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Stop &amp; Review</span>
           </button>
         </div>
       </div>
     </div>
+
+    <!-- Note Dialog -->
+    <Transition name="modal">
+      <div v-if="showNoteDialog" class="modal-overlay" @click.self="showNoteDialog = false">
+        <div class="glass-panel p-6 w-full max-w-md">
+          <h3 class="text-lg font-bold mb-4">Add Note</h3>
+          <textarea
+            v-model="noteText"
+            placeholder="Enter note..."
+            rows="3"
+            class="input mb-4"
+            autofocus
+          ></textarea>
+          <div class="flex justify-end gap-2">
+            <button @click="showNoteDialog = false" class="btn btn-secondary">Cancel</button>
+            <button @click="saveNote" class="btn btn-primary" :disabled="!noteText.trim()">
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Review Dialog -->
     <SessionReviewDialog
@@ -210,278 +268,3 @@ function formatDuration(minutes) {
     />
   </div>
 </template>
-
-<style scoped>
-.session-banner {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  background: white;
-  border-bottom: 2px solid #10b981;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.session-banner.overtime {
-  border-bottom-color: #ef4444;
-}
-
-.banner-minimized {
-  padding: 0.5rem 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.banner-minimized:hover {
-  background-color: #f9fafb;
-}
-
-.status-indicator {
-  font-size: 0.875rem;
-  line-height: 1;
-}
-
-.minimized-text {
-  flex: 1;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-}
-
-.overtime-badge {
-  color: #ef4444;
-  font-weight: 700;
-  margin-left: 0.25rem;
-}
-
-.expand-btn,
-.minimize-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #6b7280;
-  font-size: 0.75rem;
-  padding: 0.25rem;
-  transition: color 0.2s;
-}
-
-.expand-btn:hover,
-.minimize-btn:hover {
-  color: #374151;
-}
-
-.banner-expanded {
-  padding: 1rem;
-}
-
-.banner-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.project-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.project-name {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #111827;
-}
-
-.time-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.elapsed {
-  color: #10b981;
-  font-size: 1rem;
-}
-
-.separator {
-  color: #9ca3af;
-}
-
-.planned {
-  color: #6b7280;
-}
-
-.remaining {
-  color: #6b7280;
-  font-weight: 400;
-  font-size: 0.875rem;
-}
-
-.overtime-text {
-  color: #ef4444;
-  font-weight: 700;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 0.75rem;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #10b981, #3b82f6);
-  transition: width 0.3s ease;
-}
-
-.progress-fill.overtime {
-  background: linear-gradient(90deg, #ef4444, #dc2626);
-}
-
-.banner-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.action-btn {
-  padding: 0.375rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background: white;
-  cursor: pointer;
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  transition: all 0.2s;
-}
-
-.action-btn:hover {
-  background: #f3f4f6;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.action-btn.primary {
-  background: #10b981;
-  color: white;
-  border-color: #10b981;
-  font-weight: 600;
-}
-
-.action-btn.primary:hover {
-  background: #059669;
-}
-
-.action-btn.danger {
-  color: #dc2626;
-  border-color: #dc2626;
-}
-
-.action-btn.danger:hover {
-  background: #fee2e2;
-}
-
-.btn-text {
-  display: none;
-}
-
-@media (min-width: 640px) {
-  .btn-text {
-    display: inline;
-  }
-}
-
-.note-dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.note-dialog-content {
-  background: white;
-  border-radius: 8px;
-  padding: 1.5rem;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.note-dialog-content h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.note-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  resize: vertical;
-  margin-bottom: 1rem;
-}
-
-.note-textarea:focus {
-  outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-.note-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.btn-secondary {
-  background-color: #e5e7eb;
-  color: #374151;
-}
-
-.btn-secondary:hover {
-  background-color: #d1d5db;
-}
-
-.btn-primary {
-  background-color: #10b981;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: #059669;
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-</style>

@@ -1,54 +1,62 @@
 <template>
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-semibold text-gray-900">Day Memory</h1>
-        <p class="text-sm text-gray-500 mt-1">Reflect, record, and let the AI add its own observations.</p>
+        <h1 class="page-title">Day Memory</h1>
+        <p class="page-subtitle">Reflect, record, and let the AI add its own observations.</p>
       </div>
       <div class="flex items-center gap-2">
         <button
           type="button"
-          class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          class="icon-btn"
           @click="shiftDate(-1)"
           aria-label="Previous day"
-        >‹</button>
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
         <input
           type="date"
-          class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="input text-sm py-1.5 w-auto"
           :value="currentDate"
           @input="onDateInput"
         />
         <button
           type="button"
-          class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          class="icon-btn"
           @click="shiftDate(1)"
           aria-label="Next day"
-        >›</button>
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
         <button
           type="button"
-          class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          class="btn btn-primary btn-sm"
           @click="goToToday"
         >Today</button>
       </div>
     </header>
 
     <TabGroup :selected-index="selectedTab" @change="selectedTab = $event">
-      <TabList class="flex gap-1 rounded-lg bg-gray-100 p-1 mb-5 max-w-md">
+      <TabList class="glass-inset p-1 inline-flex gap-0.5 max-w-md w-full">
         <Tab v-slot="{ selected }" as="template">
           <button
-            class="flex-1 rounded-md py-2 text-sm font-medium transition focus:outline-none"
-            :class="selected ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            class="flex-1 rounded-lg py-2 text-sm font-semibold transition-all focus:outline-none"
+            :class="selected ? 'bg-accent text-white shadow-sm shadow-accent/30' : 'text-fg-muted hover:text-fg'"
           >Your track</button>
         </Tab>
         <Tab v-slot="{ selected }" as="template">
           <button
-            class="flex-1 rounded-md py-2 text-sm font-medium transition focus:outline-none"
-            :class="selected ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            class="flex-1 rounded-lg py-2 text-sm font-semibold transition-all focus:outline-none"
+            :class="selected ? 'bg-accent text-white shadow-sm shadow-accent/30' : 'text-fg-muted hover:text-fg'"
           >AI track</button>
         </Tab>
       </TabList>
 
-      <TabPanels>
+      <TabPanels class="mt-5">
         <TabPanel>
           <DayMemoryDayView
             :date="currentDate"
@@ -69,8 +77,8 @@
       </TabPanels>
     </TabGroup>
 
-    <div v-if="loading" class="text-sm text-gray-500 mt-4">Loading…</div>
-    <div v-if="error" class="text-sm text-red-600 mt-4">{{ error }}</div>
+    <div v-if="loading" class="text-sm text-muted">Loading…</div>
+    <div v-if="error" class="text-sm text-danger">{{ error }}</div>
   </div>
 </template>
 

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTagStore } from '@/stores/tags'
 
 const props = defineProps({
@@ -14,11 +14,17 @@ const emit = defineEmits(['update:modelValue'])
 const tagStore = useTagStore()
 const searchQuery = ref('')
 const isOpen = ref(false)
+const rootRef = ref(null)
 
 onMounted(async () => {
   if (tagStore.tags.length === 0) {
     await tagStore.fetchTags()
   }
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 
 const availableTags = computed(() => {
@@ -36,13 +42,8 @@ const selectedTags = computed(() => {
 function toggleTag(tagId) {
   const current = [...props.modelValue]
   const index = current.indexOf(tagId)
-
-  if (index > -1) {
-    current.splice(index, 1)
-  } else {
-    current.push(tagId)
-  }
-
+  if (index > -1) current.splice(index, 1)
+  else current.push(tagId)
   emit('update:modelValue', current)
   searchQuery.value = ''
 }
@@ -53,212 +54,86 @@ function removeTag(tagId) {
 }
 
 function handleClickOutside(event) {
-  if (!event.target.closest('.tag-multiselect')) {
+  if (rootRef.value && !rootRef.value.contains(event.target)) {
     isOpen.value = false
   }
 }
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
 </script>
 
 <template>
-  <div class="tag-multiselect">
-    <!-- Selected Tags Display -->
-    <div class="selected-tags" @click="isOpen = !isOpen">
-      <div v-if="selectedTags.length === 0" class="placeholder">
+  <div ref="rootRef" class="relative w-full">
+    <!-- Trigger / selected tags -->
+    <div
+      class="input min-h-[42px] flex items-center justify-between gap-2 cursor-pointer py-1.5"
+      @click="isOpen = !isOpen"
+    >
+      <div v-if="selectedTags.length === 0" class="text-subtle text-sm">
         Select tags...
       </div>
-      <div v-else class="tags-list">
+      <div v-else class="flex flex-wrap gap-1.5 flex-1">
         <span
           v-for="tag in selectedTags"
           :key="tag.id"
-          class="tag-chip"
-          :style="{ backgroundColor: tag.color + '20', borderColor: tag.color, color: tag.color }"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border"
+          :style="{
+            backgroundColor: tag.color + '20',
+            borderColor: tag.color + '60',
+            color: tag.color
+          }"
         >
           {{ tag.name }}
           <button
             type="button"
             @click.stop="removeTag(tag.id)"
-            class="remove-btn"
-          >
-            ×
-          </button>
+            class="opacity-70 hover:opacity-100 ml-0.5 leading-none text-base"
+            aria-label="Remove tag"
+          >×</button>
         </span>
       </div>
-      <svg class="dropdown-icon" :class="{ open: isOpen }" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+      <svg
+        class="flex-shrink-0 text-fg-subtle transition-transform duration-200"
+        :class="{ 'rotate-180': isOpen }"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        width="16"
+        height="16"
+      >
         <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
       </svg>
     </div>
 
     <!-- Dropdown -->
-    <div v-if="isOpen" class="dropdown">
+    <div
+      v-if="isOpen"
+      class="glass-panel absolute top-full left-0 right-0 mt-1 z-50 max-h-64 flex flex-col overflow-hidden"
+    >
       <input
         v-model="searchQuery"
         type="text"
         placeholder="Search tags..."
-        class="search-input"
+        class="w-full px-3 py-2 bg-transparent border-b border-fg-subtle/15 text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
         @click.stop
       />
 
-      <div v-if="availableTags.length === 0" class="no-results">
+      <div v-if="availableTags.length === 0" class="p-4 text-center text-sm text-muted">
         No tags found
       </div>
 
-      <div v-else class="tags-dropdown-list">
+      <div v-else class="overflow-y-auto max-h-52">
         <button
           v-for="tag in availableTags"
           :key="tag.id"
           type="button"
           @click.stop="toggleTag(tag.id)"
-          class="tag-option"
+          class="w-full px-3 py-2 flex items-center gap-2 text-sm text-fg text-left hover:bg-fg-subtle/10 transition-colors"
         >
           <span
-            class="tag-color"
+            class="inline-block w-3.5 h-3.5 rounded flex-shrink-0"
             :style="{ backgroundColor: tag.color }"
           ></span>
-          <span>{{ tag.name }}</span>
+          <span class="truncate">{{ tag.name }}</span>
         </button>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.tag-multiselect {
-  position: relative;
-  width: 100%;
-}
-
-.selected-tags {
-  min-height: 42px;
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  cursor: pointer;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  transition: border-color 0.2s;
-}
-
-.selected-tags:hover {
-  border-color: #10b981;
-}
-
-.placeholder {
-  color: #9ca3af;
-  font-size: 0.9rem;
-}
-
-.tags-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-  flex: 1;
-}
-
-.tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border: 1px solid;
-}
-
-.remove-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.25rem;
-  line-height: 1;
-  padding: 0;
-  margin-left: 0.125rem;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-
-.remove-btn:hover {
-  opacity: 1;
-}
-
-.dropdown-icon {
-  flex-shrink: 0;
-  color: #6b7280;
-  transition: transform 0.2s;
-}
-
-.dropdown-icon.open {
-  transform: rotate(180deg);
-}
-
-.dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 0.25rem;
-  background: white;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  max-height: 250px;
-  display: flex;
-  flex-direction: column;
-}
-
-.search-input {
-  padding: 0.5rem;
-  border: none;
-  border-bottom: 1px solid #e5e7eb;
-  outline: none;
-  font-size: 0.9rem;
-}
-
-.search-input:focus {
-  border-bottom-color: #10b981;
-}
-
-.tags-dropdown-list {
-  overflow-y: auto;
-  max-height: 200px;
-}
-
-.tag-option {
-  width: 100%;
-  padding: 0.5rem;
-  border: none;
-  background: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  text-align: left;
-  transition: background-color 0.2s;
-}
-
-.tag-option:hover {
-  background-color: #f3f4f6;
-}
-
-.tag-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.no-results {
-  padding: 1rem;
-  text-align: center;
-  color: #6b7280;
-  font-size: 0.9rem;
-}
-</style>

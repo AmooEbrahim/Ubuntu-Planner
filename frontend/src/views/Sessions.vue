@@ -134,19 +134,19 @@ async function handleDeleteSession(session) {
 </script>
 
 <template>
-  <div class="sessions-page">
-    <div class="page-header">
+  <div class="p-6 max-w-7xl mx-auto space-y-5">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
       <div>
         <h1 class="page-title">Sessions</h1>
         <p class="page-subtitle">Track and review your work sessions</p>
       </div>
-      <div class="header-actions">
+      <div class="flex items-center gap-2">
         <button
           @click="openStartDialog"
           :disabled="activeSession !== null"
-          class="btn-primary"
+          class="btn btn-success"
         >
-          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
           {{ activeSession ? 'Session Active' : 'Start Session' }}
@@ -154,70 +154,70 @@ async function handleDeleteSession(session) {
       </div>
     </div>
 
-    <div v-if="error" class="error-banner">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+    <div v-if="error" class="glass-card border-l-4 border-danger/60 bg-danger/5 flex items-center gap-2 px-4 py-3 text-danger text-sm">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="flex-shrink-0">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="8" x2="12" y2="12"></line>
         <line x1="12" y1="16" x2="12.01" y2="16"></line>
       </svg>
-      <span>{{ error }}</span>
-      <button @click="loadData" class="retry-btn">Retry</button>
+      <span class="flex-1">{{ error }}</span>
+      <button @click="loadData" class="btn btn-secondary btn-sm">Retry</button>
     </div>
 
-    <div v-if="activeSession" class="active-banner">
-      <div class="active-dot"></div>
-      <div class="active-info">
-        <span class="active-label">Active session</span>
-        <span class="active-project">{{ activeSession.project?.name || 'No Project' }}</span>
-        <span class="active-time">Started {{ dayjs(activeSession.start_time).fromNow() }} · {{ formatDuration(sessionStore.elapsedMinutes) }} elapsed</span>
+    <div v-if="activeSession" class="glass-card border-l-4 border-success/60 bg-success/5 flex items-center gap-3 px-4 py-3">
+      <div class="w-2.5 h-2.5 bg-success rounded-full animate-pulse flex-shrink-0"></div>
+      <div class="flex flex-col">
+        <span class="text-[11px] font-bold text-success uppercase tracking-wide">Active session</span>
+        <span class="text-sm font-semibold text-fg">{{ activeSession.project?.name || 'No Project' }}</span>
+        <span class="text-xs text-muted">Started {{ dayjs(activeSession.start_time).fromNow() }} · {{ formatDuration(sessionStore.elapsedMinutes) }} elapsed</span>
       </div>
     </div>
 
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+    <div v-if="loading" class="glass-card flex flex-col items-center justify-center py-16 px-6 text-muted">
+      <div class="spinner mb-4"></div>
       <p>Loading sessions...</p>
     </div>
 
-    <div v-else class="sessions-content">
-      <div class="summary-row">
-        <div class="summary-card">
-          <span class="summary-value">{{ summaryStats.count }}</span>
-          <span class="summary-label">Sessions</span>
+    <div v-else class="space-y-5">
+      <div class="grid grid-cols-3 sm:flex sm:flex-row gap-3">
+        <div class="glass-card p-4 flex flex-col items-center flex-1 min-w-[120px]">
+          <span class="text-2xl font-bold text-fg">{{ summaryStats.count }}</span>
+          <span class="text-xs text-muted uppercase tracking-wide mt-0.5">Sessions</span>
         </div>
-        <div class="summary-card">
-          <span class="summary-value">{{ formatDuration(summaryStats.totalMin) }}</span>
-          <span class="summary-label">Total Time</span>
+        <div class="glass-card p-4 flex flex-col items-center flex-1 min-w-[120px]">
+          <span class="text-2xl font-bold text-fg">{{ formatDuration(summaryStats.totalMin) }}</span>
+          <span class="text-xs text-muted uppercase tracking-wide mt-0.5">Total Time</span>
         </div>
-        <div class="summary-card">
-          <span class="summary-value" :style="{ color: getSatisfactionColor(summaryStats.avgSat) }">{{ summaryStats.avgSat }}%</span>
-          <span class="summary-label">Avg Satisfaction</span>
+        <div class="glass-card p-4 flex flex-col items-center flex-1 min-w-[120px]">
+          <span class="text-2xl font-bold" :style="{ color: getSatisfactionColor(summaryStats.avgSat) }">{{ summaryStats.avgSat }}%</span>
+          <span class="text-xs text-muted uppercase tracking-wide mt-0.5">Avg Satisfaction</span>
         </div>
       </div>
 
-      <div class="filters-bar">
-        <div class="filter-field">
-          <label class="filter-label">From</label>
-          <input type="date" v-model="filters.dateFrom" class="filter-input">
+      <div class="glass-card p-4 flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-muted">From</label>
+          <input type="date" v-model="filters.dateFrom" class="input text-xs py-1.5 w-auto">
         </div>
-        <div class="filter-field">
-          <label class="filter-label">To</label>
-          <input type="date" v-model="filters.dateTo" class="filter-input">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-muted">To</label>
+          <input type="date" v-model="filters.dateTo" class="input text-xs py-1.5 w-auto">
         </div>
-        <div class="filter-field">
-          <label class="filter-label">Project</label>
-          <select v-model="filters.projectId" class="filter-select">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-muted">Project</label>
+          <select v-model="filters.projectId" class="input text-xs py-1.5 w-auto">
             <option :value="null">All</option>
             <option v-for="p in projectStore.activeProjects" :key="p.id" :value="p.id">{{ p.name }}</option>
           </select>
         </div>
-        <div class="filter-field">
-          <label class="filter-label">Min Satisfaction</label>
-          <input type="number" v-model.number="filters.minSatisfaction" min="0" max="100" placeholder="Any" class="filter-input">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-muted">Min Satisfaction</label>
+          <input type="number" v-model.number="filters.minSatisfaction" min="0" max="100" placeholder="Any" class="input text-xs py-1.5 w-24">
         </div>
-        <div class="filter-actions">
-          <button @click="clearFilters" class="filter-clear">Clear</button>
-          <button @click="exportToCSV" class="filter-export" title="Export CSV">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <div class="flex gap-2 ml-auto">
+          <button @click="clearFilters" class="btn btn-ghost btn-sm">Clear</button>
+          <button @click="exportToCSV" class="btn btn-secondary btn-sm" title="Export CSV">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -227,96 +227,92 @@ async function handleDeleteSession(session) {
         </div>
       </div>
 
-      <div v-if="filteredSessions.length === 0" class="empty-state">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <div v-if="filteredSessions.length === 0" class="glass-card flex flex-col items-center justify-center py-16 px-6 text-center">
+        <div class="flex items-center justify-center w-16 h-16 rounded-full bg-fg-subtle/15 text-fg-subtle mb-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
         </div>
-        <h3>No sessions found</h3>
-        <p>Start your first session to track your work!</p>
-        <button @click="openStartDialog" class="btn-primary mt-4">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+        <h3 class="text-base font-semibold text-fg mb-1">No sessions found</h3>
+        <p class="text-sm text-muted mb-4">Start your first session to track your work!</p>
+        <button @click="openStartDialog" class="btn btn-success">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
           Start Session
         </button>
       </div>
 
-      <div v-else class="sessions-list">
+      <div v-else class="space-y-2.5">
         <div
           v-for="session in filteredSessions"
           :key="session.id"
-          class="session-card"
+          class="glass-card flex overflow-hidden transition-all duration-200 hover:-translate-y-0.5"
         >
-          <div class="session-accent" :style="{ backgroundColor: session.project?.color || '#94a3b8' }"></div>
-          <div class="session-body">
-            <div class="session-top-row">
-              <div class="session-project-info">
-                <h3 class="session-project-name">{{ session.project?.name || 'No Project' }}</h3>
-                <span class="session-date">{{ dayjs(session.start_time).format('MMM D, YYYY · h:mm A') }}</span>
+          <div class="w-1 flex-shrink-0" :style="{ backgroundColor: session.project?.color || '#94a3b8' }"></div>
+          <div class="flex-1 p-5 min-w-0">
+            <div class="flex justify-between items-start gap-4 mb-3">
+              <div class="min-w-0">
+                <h3 class="text-base font-semibold text-fg">{{ session.project?.name || 'No Project' }}</h3>
+                <span class="text-xs text-subtle mt-0.5 block">{{ dayjs(session.start_time).format('MMM D, YYYY · h:mm A') }}</span>
               </div>
-              <div class="session-duration-badge">
+              <div class="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-success/15 text-success text-sm font-semibold flex-shrink-0">
                 {{ formatDuration(session.actual_duration || 0) }}
-                <span v-if="session.actual_duration > session.planned_duration" class="overtime-tag">
+                <span v-if="session.actual_duration > session.planned_duration" class="text-danger text-xs">
                   +{{ formatDuration(session.actual_duration - session.planned_duration) }}
                 </span>
               </div>
             </div>
 
-            <div class="session-metrics">
-              <div class="metric">
-                <span class="metric-label">Planned</span>
-                <span class="metric-value">{{ formatDuration(session.planned_duration) }}</span>
+            <div class="flex gap-6 mb-3">
+              <div class="flex flex-col gap-0.5">
+                <span class="text-[11px] text-subtle uppercase tracking-wide">Planned</span>
+                <span class="text-sm font-semibold text-fg">{{ formatDuration(session.planned_duration) }}</span>
               </div>
-              <div v-if="session.satisfaction_score !== null" class="metric">
-                <span class="metric-label">Satisfaction</span>
-                <span class="metric-value sat" :style="{ color: getSatisfactionColor(session.satisfaction_score) }">
-                  {{ session.satisfaction_score }}%
-                </span>
+              <div v-if="session.satisfaction_score !== null" class="flex flex-col gap-0.5">
+                <span class="text-[11px] text-subtle uppercase tracking-wide">Satisfaction</span>
+                <span class="text-sm font-bold" :style="{ color: getSatisfactionColor(session.satisfaction_score) }">{{ session.satisfaction_score }}%</span>
               </div>
             </div>
 
-            <div v-if="session.tasks_done" class="session-tasks">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <div v-if="session.tasks_done" class="glass-inset flex items-start gap-2 px-3 py-2 mb-2 text-sm text-muted">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" class="flex-shrink-0 mt-0.5 text-fg-subtle">
                 <polyline points="9 11 12 14 22 4"></polyline>
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
               </svg>
               <span>{{ session.tasks_done }}</span>
             </div>
 
-            <div v-if="session.notes" class="session-notes">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <div v-if="session.notes" class="glass-inset flex items-start gap-2 px-3 py-2 mb-2 text-sm text-muted">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" class="flex-shrink-0 mt-0.5 text-fg-subtle">
                 <line x1="17" y1="10" x2="3" y2="10"></line>
                 <line x1="21" y1="6" x2="3" y2="6"></line>
                 <line x1="21" y1="14" x2="3" y2="14"></line>
                 <line x1="17" y1="18" x2="3" y2="18"></line>
               </svg>
-              <pre class="notes-text">{{ session.notes }}</pre>
+              <pre class="m-0 whitespace-pre-wrap font-sans text-fg-muted text-sm">{{ session.notes }}</pre>
             </div>
 
-            <div v-if="session.tags && session.tags.length > 0" class="session-tags">
+            <div v-if="session.tags && session.tags.length > 0" class="flex flex-wrap gap-1.5 mt-2">
               <span
                 v-for="tag in session.tags"
                 :key="tag.id"
-                class="session-tag"
+                class="px-2 py-0.5 rounded-md text-xs font-semibold"
                 :style="{ backgroundColor: tag.color + '20', color: tag.color }"
-              >
-                {{ tag.name }}
-              </span>
+              >{{ tag.name }}</span>
             </div>
           </div>
 
-          <div class="session-actions">
-            <button @click="openEditDialog(session)" class="action-btn edit" title="Edit">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <div class="flex flex-col justify-center gap-1 p-3 border-l border-fg-subtle/15">
+            <button @click="openEditDialog(session)" class="icon-btn !w-8 !h-8 hover:!text-accent hover:!bg-accent/15" title="Edit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
               </svg>
             </button>
-            <button @click="handleDeleteSession(session)" class="action-btn delete" title="Delete">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <button @click="handleDeleteSession(session)" class="icon-btn !w-8 !h-8 hover:!text-danger hover:!bg-danger/15" title="Delete">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
               </svg>
@@ -334,102 +330,3 @@ async function handleDeleteSession(session) {
     </Transition>
   </div>
 </template>
-
-<style scoped>
-.sessions-page { max-width: 1280px; margin: 0 auto; padding: 2rem; --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
-.page-title { font-size: 2rem; font-weight: 700; color: #0f172a; margin: 0; letter-spacing: -0.025em; }
-.page-subtitle { color: #64748b; margin: 0.25rem 0 0; font-size: 0.95rem; }
-
-.btn-primary {
-  display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #10b981, #059669); color: white; border: none;
-  border-radius: 12px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
-  transition: all var(--transition); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; background: #64748b; box-shadow: none; }
-
-.error-banner { display: flex; align-items: center; gap: 0.625rem; padding: 0.75rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; color: #dc2626; font-size: 0.875rem; margin-bottom: 1.5rem; }
-.retry-btn { margin-left: auto; padding: 0.375rem 0.75rem; background: white; border: 1px solid #fecaca; border-radius: 6px; color: #dc2626; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
-.retry-btn:hover { background: #fef2f2; }
-
-.active-banner { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; margin-bottom: 1.5rem; }
-.active-dot { width: 10px; height: 10px; background: #10b981; border-radius: 50%; animation: pulse 2s ease-in-out infinite; flex-shrink: 0; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-.active-info { display: flex; flex-direction: column; gap: 0.125rem; }
-.active-label { font-size: 0.7rem; font-weight: 600; color: #059669; text-transform: uppercase; letter-spacing: 0.05em; }
-.active-project { font-size: 0.95rem; font-weight: 600; color: #065f46; }
-.active-time { font-size: 0.8rem; color: #6ee7b7; }
-
-.loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 2rem; color: #64748b; }
-.spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 1rem; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.summary-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
-.summary-card { display: flex; flex-direction: column; align-items: center; padding: 1rem 1.5rem; background: white; border-radius: 12px; border: 1px solid #e2e8f0; min-width: 120px; }
-.summary-value { font-size: 1.5rem; font-weight: 700; color: #0f172a; }
-.summary-label { font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.125rem; }
-
-.filters-bar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; padding: 1rem 1.25rem; background: white; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; }
-.filter-field { display: flex; flex-direction: column; gap: 0.25rem; }
-.filter-label { font-size: 0.75rem; font-weight: 600; color: #64748b; }
-.filter-input, .filter-select { padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem; color: #0f172a; background: white; }
-.filter-input:focus, .filter-select:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
-.filter-actions { display: flex; gap: 0.5rem; margin-left: auto; align-self: flex-end; }
-.filter-clear { padding: 0.5rem 0.75rem; border: none; background: transparent; color: #64748b; font-size: 0.85rem; font-weight: 500; cursor: pointer; border-radius: 8px; }
-.filter-clear:hover { background: #f1f5f9; }
-.filter-export { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; background: white; border-radius: 8px; font-size: 0.85rem; font-weight: 500; color: #334155; cursor: pointer; }
-.filter-export:hover { background: #f8fafc; border-color: #10b981; color: #10b981; }
-
-.empty-state { display: flex; flex-direction: column; align-items: center; padding: 4rem 2rem; text-align: center; }
-.empty-icon { width: 80px; height: 80px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; }
-.empty-icon svg { width: 36px; height: 36px; color: #94a3b8; }
-.empty-state h3 { font-size: 1.25rem; font-weight: 600; color: #0f172a; margin: 0 0 0.5rem; }
-.empty-state p { color: #64748b; margin: 0; }
-
-.sessions-list { display: flex; flex-direction: column; gap: 0.75rem; }
-.session-card { display: flex; background: white; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; transition: all var(--transition); }
-.session-card:hover { border-color: transparent; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06); }
-.session-accent { width: 4px; flex-shrink: 0; }
-.session-body { flex: 1; padding: 1.25rem; min-width: 0; }
-.session-top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.75rem; }
-.session-project-info { min-width: 0; }
-.session-project-name { font-size: 1rem; font-weight: 600; color: #0f172a; margin: 0; }
-.session-date { font-size: 0.8rem; color: #94a3b8; margin-top: 0.125rem; }
-.session-duration-badge { display: flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; background: #ecfdf5; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #059669; flex-shrink: 0; }
-.overtime-tag { color: #ef4444; font-size: 0.75rem; }
-
-.session-metrics { display: flex; gap: 1.5rem; margin-bottom: 0.75rem; }
-.metric { display: flex; flex-direction: column; gap: 0.125rem; }
-.metric-label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-.metric-value { font-size: 0.9rem; font-weight: 600; color: #334155; }
-.metric-value.sat { font-weight: 700; }
-
-.session-tasks, .session-notes { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #f8fafc; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.85rem; color: #475569; }
-.session-tasks svg, .session-notes svg { flex-shrink: 0; margin-top: 2px; color: #94a3b8; }
-.notes-text { margin: 0; white-space: pre-wrap; font-family: inherit; color: #64748b; font-size: 0.85rem; }
-
-.session-tags { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.5rem; }
-.session-tag { padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
-
-.session-actions { display: flex; flex-direction: column; justify-content: center; gap: 0.375rem; padding: 1rem; border-left: 1px solid #f1f5f9; }
-.action-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: none; background: transparent; border-radius: 8px; cursor: pointer; transition: all var(--transition); }
-.action-btn.edit { color: #6366f1; }
-.action-btn.edit:hover { background: #6366f1; color: white; }
-.action-btn.delete { color: #ef4444; }
-.action-btn.delete:hover { background: #ef4444; color: white; }
-
-.modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
-.modal-enter-from, .modal-leave-to { opacity: 0; }
-
-@media (max-width: 768px) {
-  .sessions-page { padding: 1rem; }
-  .page-header { flex-direction: column; gap: 1rem; }
-  .summary-row { flex-wrap: wrap; }
-  .filters-bar { flex-direction: column; align-items: stretch; }
-  .filter-actions { margin-left: 0; justify-content: flex-end; }
-  .session-card { flex-direction: column; }
-  .session-actions { flex-direction: row; border-left: none; border-top: 1px solid #f1f5f9; padding: 0.75rem 1rem; }
-}
-</style>
